@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How aligners work – alignment and mapping algorithms, step by step</title>
+<meta name="description" content="Interactive animations of the algorithms behind sequence alignment and read mapping – from searching and sorting to the Burrows–Wheeler transform, dynamic programming, BLAST, multiple alignment and hidden Markov models – to watch, change and do by hand.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b5d78'/%3E%3Crect x='5' y='6' width='5' height='5' rx='1.2' fill='%238fe0b0'/%3E%3Crect x='11' y='6' width='5' height='5' rx='1.2' fill='%23a9c8ff'/%3E%3Crect x='17' y='6' width='5' height='5' rx='1.2' fill='%23ffd479'/%3E%3Crect x='23' y='6' width='5' height='5' rx='1.2' fill='%23ffaaa0'/%3E%3Cpath d='M7.5 13v4.5M13.5 13v4.5M25.5 13v4.5' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='5' y='20' width='5' height='5' rx='1.2' fill='%238fe0b0'/%3E%3Crect x='11' y='20' width='5' height='5' rx='1.2' fill='%23a9c8ff'/%3E%3Cpath d='M17.8 22.5h3.4' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='23' y='20' width='5' height='5' rx='1.2' fill='%23ffaaa0'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/viz.css">
+</head>
+<body data-page="align" data-title="How aligners work">
+<div class="app">
+
+  <header class="topbar">
+    <a class="brand" href="#start" title="Start">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0b5d78"/><rect x="5" y="6" width="5" height="5" rx="1.2" fill="#8fe0b0"/><rect x="11" y="6" width="5" height="5" rx="1.2" fill="#a9c8ff"/><rect x="17" y="6" width="5" height="5" rx="1.2" fill="#ffd479"/><rect x="23" y="6" width="5" height="5" rx="1.2" fill="#ffaaa0"/><path d="M7.5 13v4.5M13.5 13v4.5M25.5 13v4.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><rect x="5" y="20" width="5" height="5" rx="1.2" fill="#8fe0b0"/><rect x="11" y="20" width="5" height="5" rx="1.2" fill="#a9c8ff"/><path d="M17.8 22.5h3.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><rect x="23" y="20" width="5" height="5" rx="1.2" fill="#ffaaa0"/></svg>
+      <div>
+        <div class="brand-title">How aligners work</div>
+        <div class="brand-sub">Alignment and mapping algorithms, step by step</div>
+      </div>
+    </a>
+    <div class="spacer"></div>
+    <div class="progress-wrap" title="Activities done and questions answered (saved in this browser)"><span class="progress-label">0% done</span><div class="progress"><i></i></div></div>
+    <button class="btn" id="answersBtn" type="button"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span>My answers</span></button>
+    <button class="btn" id="helpBtn" type="button" title="How this page works"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.6-2.8 4M12 17.5h.01"/></svg><span>Help</span></button>
+  </header>
+
+  <div class="main">
+    <aside class="tut" aria-label="Instructions">
+      <nav class="ch-nav" aria-label="Chapters"></nav>
+<!--CHAPTERS-->
+<!--/CHAPTERS-->
+    </aside>
+
+    <div class="splitter" role="separator" aria-orientation="vertical" title="Drag to resize · double-click to reset"></div>
+
+    <section class="bench" aria-label="Animations">
+      <div class="wb-tabs" role="tablist">
+        <button class="wb-tab on" type="button" role="tab" data-wb="viz"><svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Animation<span class="dot"></span></button>
+        <button class="wb-tab" type="button" role="tab" data-wb="tables"><svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>Score tables<span class="dot"></span></button>
+        <button class="bench-close" type="button" aria-label="Back to the instructions">✕ Instructions</button>
+      </div>
+      <div class="wb-body">
+        <div class="wb-pane" data-wb="viz"><div id="vizRoot" class="viz-root"></div></div>
+        <div class="wb-pane" data-wb="tables" hidden><div id="tablesRoot" class="tables-root"></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<button class="bench-fab" type="button" aria-label="Open the animation"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Animation</button>
+<noscript><p style="padding:20px">This page needs JavaScript.</p></noscript>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/algos.js"></script>
+<script src="assets/js/viz.js"></script>
+<!--MACHINES-->
+<script src="assets/js/page-align.js"></script>
+<script src="assets/js/tutorial.js"></script>
+</body>
+</html>

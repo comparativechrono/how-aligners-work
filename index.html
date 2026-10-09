@@ -1,0 +1,1471 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How aligners work – alignment and mapping algorithms, step by step</title>
+<meta name="description" content="Interactive animations of the algorithms behind sequence alignment and read mapping – from searching and sorting to the Burrows–Wheeler transform, dynamic programming, BLAST, multiple alignment and hidden Markov models – to watch, change and do by hand.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b5d78'/%3E%3Crect x='5' y='6' width='5' height='5' rx='1.2' fill='%238fe0b0'/%3E%3Crect x='11' y='6' width='5' height='5' rx='1.2' fill='%23a9c8ff'/%3E%3Crect x='17' y='6' width='5' height='5' rx='1.2' fill='%23ffd479'/%3E%3Crect x='23' y='6' width='5' height='5' rx='1.2' fill='%23ffaaa0'/%3E%3Cpath d='M7.5 13v4.5M13.5 13v4.5M25.5 13v4.5' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='5' y='20' width='5' height='5' rx='1.2' fill='%238fe0b0'/%3E%3Crect x='11' y='20' width='5' height='5' rx='1.2' fill='%23a9c8ff'/%3E%3Cpath d='M17.8 22.5h3.4' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='23' y='20' width='5' height='5' rx='1.2' fill='%23ffaaa0'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/viz.css">
+</head>
+<body data-page="align" data-title="How aligners work">
+<div class="app">
+
+  <header class="topbar">
+    <a class="brand" href="#start" title="Start">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#0b5d78"/><rect x="5" y="6" width="5" height="5" rx="1.2" fill="#8fe0b0"/><rect x="11" y="6" width="5" height="5" rx="1.2" fill="#a9c8ff"/><rect x="17" y="6" width="5" height="5" rx="1.2" fill="#ffd479"/><rect x="23" y="6" width="5" height="5" rx="1.2" fill="#ffaaa0"/><path d="M7.5 13v4.5M13.5 13v4.5M25.5 13v4.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><rect x="5" y="20" width="5" height="5" rx="1.2" fill="#8fe0b0"/><rect x="11" y="20" width="5" height="5" rx="1.2" fill="#a9c8ff"/><path d="M17.8 22.5h3.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><rect x="23" y="20" width="5" height="5" rx="1.2" fill="#ffaaa0"/></svg>
+      <div>
+        <div class="brand-title">How aligners work</div>
+        <div class="brand-sub">Alignment and mapping algorithms, step by step</div>
+      </div>
+    </a>
+    <div class="spacer"></div>
+    <div class="progress-wrap" title="Activities done and questions answered (saved in this browser)"><span class="progress-label">0% done</span><div class="progress"><i></i></div></div>
+    <button class="btn" id="answersBtn" type="button"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg><span>My answers</span></button>
+    <button class="btn" id="helpBtn" type="button" title="How this page works"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.6-2.8 4M12 17.5h.01"/></svg><span>Help</span></button>
+  </header>
+
+  <div class="main">
+    <aside class="tut" aria-label="Instructions">
+      <nav class="ch-nav" aria-label="Chapters"></nav>
+<!--CHAPTERS-->
+<section class="chapter" id="start" data-num="0" data-title="Start here" data-bench="viz">
+  <h1>How aligners work</h1>
+  <div class="meta-row"><span class="pill time">≈ 5 min</span></div>
+  <p class="lede">BWA, BLAST and Clustal are programs built from algorithms that work on letters. Here you watch those algorithms run, one step at a time, on sequences short enough to follow – then change the sequences, and do the steps yourself until you can do them on paper.</p>
+
+<h2 id="s-page">This page</h2>
+<p>On the left, the instructions: chapter by chapter, from the basic algorithms to the ones inside the tools you use. On the right, the <b>animation</b> of the algorithm you are reading about. A button like <button class="do" type="button" data-viz="dp:tiny">show it</button> opens an algorithm on the right with an example, ready to play.</p>
+<p>Each animation can be played, stepped through, run on sequences of your own (<b>Change the input</b>), or done by you (<b>Your turn</b>): the animation then stops at every step and waits for your answer. The aim is that you can do each algorithm on paper, on a short sequence, without help.</p>
+
+<div class="activity">
+  <div class="act-t">Try the controls</div>
+  <ol class="steps">
+    <li data-task="s-open" data-auto="viz:load machine=dp">Open an example: <button class="do" type="button" data-viz="dp:tiny">show it</button> – the edit distance between two short sequences (chapter 6 explains it).</li>
+    <li data-task="s-play" data-auto="viz:end machine=dp">Press <b>▶</b> (Play). Each step is explained under the picture. Use <b>◀</b> and <b>▶</b> next to it, or the <kbd>←</kbd> <kbd>→</kbd> keys, to go one step at a time; <b>Speed</b> sets how fast it plays. Go to the last step.</li>
+    <li data-task="s-code">Open <b>The algorithm as code</b> under the controls: the highlighted line is the one that ran in this step. Step back and forth and watch it move.</li>
+    <li data-task="s-turn" data-auto="viz:practice machine=dp">Press <b>Your turn</b> (top right of the animation) and do the steps yourself. Each cell asks for a number: the smallest of the three candidates shown next to the matrix. <b>Show me</b> gives the answer if you are stuck.</li>
+  </ol>
+</div>
+
+<h2 id="s-map">Algorithms inside the tools</h2>
+<p>Each tool below is a few of these algorithms put together. The chapters build up to them: first the basic ideas (searching, sorting, hashing, trees), then exact matching, then alignment with errors.</p>
+<table class="table mapt">
+<tr><th>Tool</th><th>Job</th><th>Algorithms inside (chapter)</th></tr>
+<tr><td>grep, Python’s <code>re</code>, motif scanners</td><td>Find a pattern exactly</td><td>Naive search, Knuth–Morris–Pratt, Boyer–Moore (3)</td></tr>
+<tr><td><b>BWA</b>, <b>Bowtie</b>, <b>Bowtie 2</b>, HISAT2</td><td>Map short reads to a genome</td><td>Suffix arrays (4), the Burrows–Wheeler transform and FM-index (5), dynamic programming (6, 7)</td></tr>
+<tr><td><b>minimap2</b></td><td>Map long and short reads, align genomes</td><td>Hash tables (2), minimizers and chaining (9), dynamic programming (6, 7)</td></tr>
+<tr><td><b>BLAST</b>, FASTA</td><td>Search a database for similar sequences</td><td>Words and hash tables (2, 8), substitution matrices and extension (7, 8), E-values (8)</td></tr>
+<tr><td>EMBOSS <b>needle</b> and <b>water</b></td><td>Align two sequences</td><td>Needleman–Wunsch and Smith–Waterman (7)</td></tr>
+<tr><td><b>Clustal Omega</b>, MUSCLE, MAFFT</td><td>Align many sequences</td><td>Guide trees, progressive alignment, profiles (10)</td></tr>
+<tr><td><b>HMMER</b>, Pfam</td><td>Find protein families and domains</td><td>Profile hidden Markov models (11)</td></tr>
+<tr><td>Mash, sourmash</td><td>Compare genomes without aligning them</td><td>k-mers and MinHash (12)</td></tr>
+</table>
+<p>Chapter 13 has the same map, with a button for each step, and a checklist of what you can do by hand at the end.</p>
+
+<h2 id="s-conv">How the animations show things</h2>
+<ul>
+<li>Positions in a sequence count from <b>0</b>, as in Python: the first letter is at position 0. Columns of an alignment or a profile, and the steps of an algorithm, are numbered from 1.</li>
+<li>Each base has its colour: <span class="tiles mini"><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span></span>. The <span class="tiles mini"><span class="tile bS">$</span></span> marks the end of a text (chapter 5).</li>
+<li>In a matrix, sequence 1 runs down the side and sequence 2 across the top.</li>
+<li>Whatever is being looked at in a step has a <b>blue ring</b>; in <b>Your turn</b>, what you can click has an <b>orange</b> one.</li>
+</ul>
+
+<div class="q" data-q="s-q1" data-type="mcq">
+  <div class="q-text">A human genome has about 3.1 billion bases. To look for one 100-base read by comparing it, letter by letter, with every position of the genome, roughly how many letter comparisons are needed in the worst case?</div>
+  <div class="mcq"><label data-why="That is the number of positions – each needs up to 100 comparisons."><input type="radio"> <span>About 3 × 10<sup>9</sup></span></label><label data-correct data-why="3.1 × 10⁹ positions × 100 letters. For a run of 100 million reads that is 3 × 10¹⁹ – which is why mappers build an index of the genome first (chapters 4, 5 and 9)."><input type="radio"> <span>About 3 × 10<sup>11</sup></span></label><label data-why="Too many: 3.1 × 10⁹ positions × 100 letters each."><input type="radio"> <span>About 3 × 10<sup>15</sup></span></label></div>
+</div>
+
+<h2 id="s-name">Your answers</h2>
+<p>Your ticks and answers are saved in this browser. <b>My answers</b> (top right) downloads them as a file, or saves all your work to continue on another computer. Put your name on the file:</p>
+<div class="name-field"><label for="studentName"><b>Your name</b></label> <input id="studentName" type="text" data-student-name autocomplete="name" placeholder="Name (optional)"></div>
+
+</section>
+
+<section class="chapter" id="basics" data-num="1" data-title="Searching and sorting" data-bench="viz" hidden>
+  <h1>Searching and sorting</h1>
+  <div class="meta-row"><span class="pill time">≈ 30 min</span></div>
+  <p class="lede">Two jobs come before any alignment: finding things and putting them in order. Every index of a genome is made by sorting and searched by halving – so first, how to count the steps an algorithm takes, and why the way they grow matters more than how fast the computer is.</p>
+
+<h2 id="o-steps">Counting steps</h2>
+<p>To compare algorithms, count the <b>steps</b> they take – comparisons, moves – and ask how that number grows with the size n of the data. <b>Big O</b> keeps only the term that grows fastest, for the worst case: reading item i of a list is O(1), whatever its length; looking at every item is O(n); halving the data at every step is O(log n). On a genome, the difference between these is the difference between a second and a lifetime:</p>
+<table class="table bigo"><tr><th>n</th><th>log<sub>2</sub> n</th><th>n log<sub>2</sub> n</th><th>n<sup>2</sup></th></tr><tr><td>10</td><td>3</td><td>33</td><td>100</td></tr><tr><td>1,000</td><td>10</td><td>10,000</td><td>1,000,000</td></tr><tr><td>1,000,000</td><td>20</td><td>2 × 10<sup>7</sup></td><td>10<sup>12</sup></td></tr><tr><td>3.1 × 10<sup>9</sup> (a human genome)</td><td>32</td><td>10<sup>11</sup></td><td>10<sup>19</sup></td></tr></table>
+<p>At a billion simple steps a second, 10<sup>11</sup> steps take under two minutes; 10<sup>19</sup> take some 300 years.</p>
+
+<h2 id="o-search">Linear and binary search</h2>
+<p><b>Linear search</b> looks at the items one by one: up to n comparisons. If the list is <b>sorted</b>, <b>binary search</b> does much better: compare with the middle item, and keep only the half where the item must be. Every comparison halves what is left, so about log<sub>2</sub> n comparisons are enough: 7 for 100 items, 14 for 10,000, 32 for 3 billion.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="o-s1" data-auto="viz:end machine=search">Open <button class="do" type="button" data-viz="search:race">show it</button> – both searches side by side on the same list.</li>
+    <li data-task="o-s2" data-auto="viz:end machine=search preset=kmers">Open <button class="do" type="button" data-viz="search:kmers">show it</button>: binary search works for words too, in alphabetical order – this is how a suffix array is searched (chapter 4).</li>
+  </ol>
+</div>
+<div class="q" data-q="o-q1" data-accept="^(19|20|21)$">
+  <div class="q-text">About how many comparisons does binary search need, at most, in a sorted list of 1,000,000 items?</div>
+  <div class="q-model"><p>20: 2<sup>20</sup> is just over a million, and each comparison halves what is left.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="o-s3" data-auto="viz:practice machine=search">Open <button class="do" type="button" data-viz="search:binary" data-viz-mode="practice">your turn</button>: find the middle item and say which half to keep, until 68 is found.</li>
+  </ol>
+</div>
+
+<h2 id="o-sort">Sorting</h2>
+<p>Binary search needs sorted data, and so do suffix arrays and the BWT. Five ways to sort, from the slowest:</p>
+<ul>
+<li><b>Bubble sort</b>: compare neighbours along the list and swap any pair in the wrong order; each pass carries the largest item to the end. About n²/2 comparisons – O(n²).</li>
+<li><b>Selection sort</b>: find the smallest item and swap it to the front, then the smallest of the rest… Also n²/2 comparisons, but at most n swaps.</li>
+<li><b>Insertion sort</b>: take each item in turn and slide it left into its place. O(n²) at worst, but on a list that is nearly sorted only about n steps.</li>
+<li><b>Merge sort</b>: split the list in halves until each part has one item, then merge sorted parts by repeatedly taking the smaller front item. log<sub>2</sub> n levels of n steps each: O(n log n), always. It is <b>stable</b>: equal items keep their order.</li>
+<li><b>Quicksort</b>: put a <b>pivot</b> in its final place, with smaller items to its left and larger ones to its right, then sort each side the same way. O(n log n) on average – but O(n²) if the pivot is always the largest or smallest item.</li>
+</ul>
+<p>Merge sort and quicksort are <b>recursive</b>: they solve a problem by solving smaller copies of it, down to a <b>base case</b> (a list of one item) that needs no work.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="o-o1" data-auto="viz:end machine=sort preset=insertion">Open <button class="do" type="button" data-viz="sort:bubble">show it</button> and play it. Then choose <b>Selection sort</b> and <b>Insertion sort</b> in the list of examples, on the same five numbers.</li>
+    <li data-task="o-o2" data-auto="viz:end machine=sort preset=merge">Open <button class="do" type="button" data-viz="sort:merge">show it</button>: the bracket shows the part being worked on and its level of recursion; merged items collect in the row below.</li>
+    <li data-task="o-o3" data-auto="viz:end machine=sort preset=quick">Open <button class="do" type="button" data-viz="sort:quick">show it</button>: the purple bar is the pivot; the pointers l and r meet in the middle.</li>
+  </ol>
+</div>
+<div class="q" data-q="o-q2">
+  <div class="q-text">How many comparisons does bubble sort make on 5 3 8 2 4? Explain the number.</div>
+  <div class="q-model"><p>10 = 4 + 3 + 2 + 1: the first pass compares 4 pairs, and each pass after it one pair fewer, because the largest items are already at the end. In general (n − 1) + (n − 2) + … + 1 = n(n − 1)/2 – O(n²).</p></div>
+</div>
+<div class="q" data-q="o-q3" data-type="mcq">
+  <div class="q-text">A list of a million reads is already sorted by position, except for a few reads out of place. Which method finishes fastest?</div>
+  <div class="mcq"><label data-correct data-why="On nearly sorted data each item moves only a few places: about n steps. (Python’s own sort, Timsort, looks for such sorted runs too.)"><input type="radio"> <span>Insertion sort</span></label><label data-why="It always makes about n²/2 comparisons, however sorted the data already is."><input type="radio"> <span>Selection sort</span></label><label data-why="On sorted data that pivot is always the largest item: its worst case, O(n²)."><input type="radio"> <span>Quicksort with the last item as pivot</span></label></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="o-o4" data-auto="viz:practice machine=sort preset=merge">Open <button class="do" type="button" data-viz="sort:merge" data-viz-mode="practice">your turn</button>: at each step of a merge, say which item comes next.</li>
+    <li data-task="o-o5" data-auto="viz:practice machine=sort preset=quick">Open <button class="do" type="button" data-viz="sort:quick" data-viz-mode="practice">your turn</button>: say where each pivot ends up.</li>
+  </ol>
+</div>
+
+<h2 id="o-tools">In real tools</h2>
+<table class="table tools"><tr><th><code>sort</code> (Unix), <code>samtools sort</code></th><td>Merge sort: data larger than the memory is sorted in pieces, written to temporary files, and the files are merged – an external merge sort.</td></tr><tr><th>Python’s <code>sorted()</code></th><td>Timsort: merge sort that first finds runs that are already in order, sorting short stretches by insertion. Stable, O(n log n).</td></tr><tr><th><code>bwa index</code>, <code>bowtie2-build</code></th><td>Sort all the suffixes of the genome to make the BWT (chapter 5) – billions of items, with special sorting methods for suffixes.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>Count steps and see how they grow with n: O(1), O(log n), O(n), O(n log n), O(n²).</li><li>Binary search halves a sorted list at every step: about log₂ n comparisons.</li><li>Bubble, selection and insertion sort are O(n²); merge sort and quicksort (on average) O(n log n). Insertion sort is fast on nearly sorted data; merge sort is stable.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="hashing" data-num="2" data-title="Hash tables and trees" data-bench="viz" hidden>
+  <h1>Hash tables, recursion and trees</h1>
+  <div class="meta-row"><span class="pill time">≈ 30 min</span></div>
+  <p class="lede">Tools that compare sequences rarely search letter by letter: they look things up. Hash tables find a word of DNA in one step and trees keep data in order – the data structures inside BLAST, minimap2 and every k-mer counter.</p>
+
+<h2 id="h-hash">Hash tables</h2>
+<p>Binary search needs about log<sub>2</sub> n steps. A <b>hash table</b> usually needs one. A <b>hash function</b> turns each key into a number, and the number says which of the table’s N <b>slots</b> holds it: slot = number mod N. To look a key up, compute its slot and look only there.</p>
+<p>For DNA the number is easy: read a k-mer as a number in base 4, A = 0, C = 1, G = 2, T = 3 – two bits per letter:</p>
+<div class="formula">GAT = 2×4² + 0×4¹ + 3×4⁰ = 32 + 0 + 3 = 35;   35 mod 11 = 2</div>
+<p>Two keys can land in the same slot – a <b>collision</b>. With <b>chaining</b> each slot holds a list; with <b>open addressing</b> (linear probing) the newcomer takes the next free slot. Either way, the fuller the table (its <b>load factor</b>), the more collisions, and the slower the lookups.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="h-w1" data-auto="viz:end machine=hash preset=chain">Open <button class="do" type="button" data-viz="hash:chain">show it</button> – every 3-mer of GATTACAGATTACA in a table of 11 slots, then a lookup. The table maps each 3-mer to the positions where it occurs: a <b>k-mer index</b>.</li>
+    <li data-task="h-w2" data-auto="viz:end machine=hash preset=probe">Open <button class="do" type="button" data-viz="hash:probe">show it</button> – the same, with linear probing.</li>
+  </ol>
+</div>
+<div class="q" data-q="h-q1" data-accept="^15[^0-9]+4$">
+  <div class="q-text">What is the number of ATT, and its slot in a table of 11? (Two numbers.)</div>
+  <div class="q-model"><p>ATT = 0×16 + 3×4 + 3 = 15, and 15 mod 11 = 4.</p></div>
+</div>
+<div class="q" data-q="h-q2">
+  <div class="q-text">Which two 3-mers of GATTACAGATTACA collide in slot 4, and which in slot 5?</div>
+  <div class="q-model"><p>ATT (15) and ACA (4): both 4 mod 11. TTA (60) and TAC (49): both 5 mod 11.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="h-p1" data-auto="viz:practice machine=hash">Open <button class="do" type="button" data-viz="hash:chain" data-viz-mode="practice">your turn</button> and work out the slot of each new 3-mer.</li>
+  </ol>
+</div>
+
+<h2 id="h-rec">Recursion</h2>
+<p>A function that calls itself on a smaller part of the problem is <b>recursive</b>: merge sort sorts a list by sorting its two halves. It needs a <b>base case</b> that ends the calls (a list of one item is sorted), and each call must move towards it. Every call waits on the <b>call stack</b> until the calls it made return – deep recursion costs memory. Recursion gives short, clear definitions; chapter 6 shows how a recursive definition of the edit distance becomes slow, and how dynamic programming fixes it.</p>
+
+<h2 id="h-bst">Binary search trees</h2>
+<p>A <b>binary search tree</b> keeps data in order without an array: each node has at most two children: everything in its left subtree is smaller, everything in its right subtree larger. A search starts at the root and goes left or right at each node, throwing away half of what is left – like binary search. New items are inserted where the search for them ends.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="h-t1" data-auto="viz:end machine=bst preset=balanced">Open <button class="do" type="button" data-viz="bst:balanced">show it</button> – nine numbers inserted, then a search for 61.</li>
+    <li data-task="h-t2" data-auto="viz:end machine=bst preset=vine">Open <button class="do" type="button" data-viz="bst:vine">show it</button> – the same numbers inserted in sorted order.</li>
+  </ol>
+</div>
+<div class="q" data-q="h-q3" data-accept="^4[^0-9]+7$">
+  <div class="q-text">In the first tree, how many comparisons does the search for 61 take? And in the vine?</div>
+  <div class="q-model"><p>4 (50, 70, 60, 61) in the balanced tree; 7 in the vine (20, 30, 40, 50, 52, 60, 61), where every node has only a right child – as slow as a linear search. Real programs keep their trees balanced.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="h-t3" data-auto="viz:practice machine=bst">Open <button class="do" type="button" data-viz="bst:balanced" data-viz-mode="practice">your turn</button>: at each node, go left or right.</li>
+  </ol>
+</div>
+<p>Trees appear all through bioinformatics: tries and suffix trees index sequences (chapter 4), and guide trees and phylogenies order sequences by similarity (chapter 10).</p>
+
+<h2 id="h-tools">In real tools</h2>
+<table class="table tools"><tr><th>BLAST</th><td>Puts the words of the query in a lookup table, then reads the database once, looking each of its words up (chapter 8).</td></tr><tr><th>minimap2</th><td>Indexes the minimizers of the reference in a hash table: a lookup gives every place where a minimizer of the read occurs (chapter 9).</td></tr><tr><th>Jellyfish</th><td>Counts every k-mer of a sequencing run in a hash table of billions of entries.</td></tr><tr><th>Python <code>dict</code> and <code>set</code></th><td>Hash tables: <code>kmer in seen</code> takes about one step however large the set.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>A hash table finds a key in about one step: slot = hash(key) mod N. Collisions are handled by chaining or open addressing.</li><li>A k-mer is a number in base 4 (2 bits per letter); a k-mer index maps each k-mer to where it occurs.</li><li>Recursion solves a problem through smaller copies of itself, down to a base case.</li><li>A balanced binary search tree finds an item in about log₂ n steps; an unbalanced one can take n.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="exact" data-num="3" data-title="Exact matching" data-bench="viz" hidden>
+  <h1>Finding a pattern: exact matching</h1>
+  <div class="meta-row"><span class="pill time">≈ 40 min</span></div>
+  <p class="lede">The simplest search question – where in this sequence does this exact pattern occur? – already has four classic answers. Each is faster than the last because it uses more of what it has already seen. The same ideas come back in every index and every mapper.</p>
+
+<h2 id="x-naive">The naive search</h2>
+<p>The plainest way to find a pattern P (length m) in a text T (length n): put P under the start of T and compare letter by letter from the left; at the first mismatch, or when every letter has matched, move P one place on and start again. There are n − m + 1 places to try, and up to m comparisons at each: in the worst case about <b>m × n</b> comparisons – O(mn).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="x-n1" data-auto="viz:end machine=naive">Open <button class="do" type="button" data-viz="naive:tata">show it</button> – TATA in ATACGATATAGA – and play it. The counts above the text keep the score.</li>
+    <li data-task="x-n2" data-auto="viz:end machine=naive preset=worst">Try a bad case: <button class="do" type="button" data-viz="naive:worst">show it</button>. Why does each shift take so many comparisons?</li>
+  </ol>
+</div>
+<div class="q" data-q="x-q1" data-accept="^9$">
+  <div class="q-text">How many places does the naive search try for a pattern of 4 letters in a text of 12?</div>
+  <div class="q-model"><p>12 − 4 + 1 = 9: shifts 0 to 8.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="x-n3" data-auto="viz:practice machine=naive">Open <button class="do" type="button" data-viz="naive:tata" data-viz-mode="practice">your turn</button>: at each shift, say how many letters match before the first mismatch.</li>
+  </ol>
+</div>
+<p>Comparisons that matched are thrown away at every shift: after matching TATA’s first three letters, the naive search moves one place and compares the same text letters again. The next two methods use what they have already seen.</p>
+
+<h2 id="x-kmp">Knuth–Morris–Pratt: never look back</h2>
+<p>Knuth, Morris and Pratt (1977) first make a table from the pattern alone. For each i, <b>π[i]</b> is the length of the longest <b>border</b> of the first i letters: a part that is both a prefix and a suffix of them (not all of them). For TATATATAGT:</p>
+<div class="formula">i       0  1  2  3  4  5  6  7  8  9 10
+P          T  A  T  A  T  A  T  A  G  T
+π[i]   −1  0  0  1  2  3  4  5  6  0  1</div>
+<p>π[0] = −1 by convention: when nothing has matched, the pattern moves on by 0 − (−1) = 1 place. If i letters have matched and the next one does not, the matched part ends with its border – which is also how the pattern starts. So the pattern can jump <b>i − π[i]</b> places, the border stays lined up with the text, and the comparison carries on after it. A text letter that has matched is never compared again: the search takes time proportional to n, and the table to m – O(n + m).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="x-k1" data-auto="viz:end machine=kmp preset=table">Open <button class="do" type="button" data-viz="kmp:table">show it</button> – how the table of TATATATAGT is made, one border at a time.</li>
+    <li data-task="x-k2" data-auto="viz:end machine=kmp preset=atcgatg">Open <button class="do" type="button" data-viz="kmp:atcgatg">show it</button> – the table of ATCGATG, then the search. Watch for jumps of more than one, and for the letters kept from one shift to the next (green rings).</li>
+  </ol>
+</div>
+<div class="q" data-q="x-q2" data-accept="^-1\s*,?\s*0\s*,?\s*0\s*,?\s*0\s*,?\s*0\s*,?\s*1\s*,?\s*2\s*,?\s*0$" data-hint="π[0] is −1 by definition. π[i] is the longest border of the first i letters: for ATCGA it is A.">
+  <div class="q-text">On paper: the table of <b>ATCGATG</b>, π[0] to π[7]. (Type the 8 numbers with spaces.)</div>
+  <div class="q-model"><p><code>-1 0 0 0 0 1 2 0</code>: π[5] = 1 (A…A), π[6] = 2 (AT…AT), and ATCGATG ends in G, which does not start the pattern.</p></div>
+</div>
+<div class="q" data-q="x-q3" data-accept="^4$">
+  <div class="q-text">In that search, after six letters (ATCGAT) have matched, the seventh does not. How far does the pattern jump?</div>
+  <div class="q-model"><p>i − π[i] = 6 − 2 = 4: the border AT of ATCGAT is moved under the AT at the end of the matched text.</p></div>
+</div>
+<div class="q" data-q="x-q4" data-accept="^23\D+32$">
+  <div class="q-text">How many comparisons did KMP make in that example – and how many does the naive search make on the same text and pattern? (Two numbers.)</div>
+  <div class="q-model"><p>23 for KMP and 32 for the naive search (the last step of the KMP animation says both).</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="x-k3" data-auto="viz:practice machine=kmp">Open <button class="do" type="button" data-viz="kmp:atcgatg" data-viz-mode="practice">your turn</button>: fill in the table, then say how far the pattern jumps at each mismatch.</li>
+  </ol>
+</div>
+
+<h2 id="x-bm">Boyer–Moore: compare from the right</h2>
+<p>Boyer and Moore (1977) compare the pattern with the text <b>from its right end</b>. A mismatch then tells something about the text letters further on, and two rules each propose a jump – the larger one is taken:</p>
+<ul>
+<li><b>Bad character</b>: move the pattern until a letter equal to the mismatched text letter lies under it. If that letter is not in the pattern at all, the whole pattern can pass it.</li>
+<li><b>Good suffix</b>: the letters that did match (a suffix of the pattern) are moved to where the same letters occur again in the pattern – or, failing that, to where a prefix of the pattern fits their end.</li>
+</ul>
+<p>Both rules come from tables made from the pattern. Long patterns give long jumps: Boyer–Moore often makes far fewer than n comparisons. With only four letters, DNA gives the bad-character rule less to work with than English text; the good-suffix rule makes up for it.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="x-b1" data-auto="viz:end machine=bm preset=notin">Open <button class="do" type="button" data-viz="bm:notin">show it</button>: the first mismatched text letter, G, is not in TATAC – a jump of 5.</li>
+    <li data-task="x-b2" data-auto="viz:end machine=bm preset=tatac">Open <button class="do" type="button" data-viz="bm:tatac">show it</button>: here the mismatched letter is in the pattern.</li>
+    <li data-task="x-b3" data-auto="viz:end machine=bm preset=suffix2">Open the good-suffix examples <button class="do" type="button" data-viz="bm:suffix1">found again</button> and <button class="do" type="button" data-viz="bm:suffix2">only a prefix fits</button>. In the tables, the cells used light up; the winning rule is orange.</li>
+  </ol>
+</div>
+<div class="q" data-q="x-q5" data-accept="^2$" data-hint="Count from position 2 back to the nearest T of TCGC.">
+  <div class="q-text">Pattern TCGC, compared from the right with the text, mismatches at its position 2 (the G) against a T in the text. How far does the bad-character rule move the pattern?</div>
+  <div class="q-model"><p>2: the nearest T to the left in the pattern is at position 0, two places back – 1 more than the naive shift.</p></div>
+</div>
+<div class="q" data-q="x-q6" data-type="mcq">
+  <div class="q-text">Why does Boyer–Moore get <i>faster</i> as the pattern gets longer?</div>
+  <div class="mcq"><label data-correct data-why="With a long pattern and a letter that is not in it (or a suffix that does not recur), one comparison can skip m letters of the text."><input type="radio"> <span>A mismatch near the right end can move the pattern up to its whole length, so longer patterns skip more of the text</span></label><label data-why="That is often true, but the speed comes from the length of the jumps."><input type="radio"> <span>Longer patterns have fewer matches</span></label><label data-why="It compares one letter at a time, like the others."><input type="radio"> <span>It compares several letters at once</span></label></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="x-b4" data-auto="viz:practice machine=bm">Open <button class="do" type="button" data-viz="bm:read" data-viz-mode="practice">your turn</button>: at each mismatch, give the jump of each rule from the tables.</li>
+  </ol>
+</div>
+
+<h2 id="x-rk">Rabin–Karp: compare numbers instead of letters</h2>
+<p>Karp and Rabin (1987) turn the pattern into a number – its <b>hash</b> – and compare it with the hash of each window of the text. Only a window with the same hash is compared letter by letter. For digits, the window 1284 is the number 1284; the hash is the remainder after dividing by a chosen number q: 1284 mod 97 = 23. DNA letters become digits in base 4 (A = 0, C = 1, G = 2, T = 3).</p>
+<p>The trick is the <b>rolling hash</b>: the next window’s number comes from the last one in one step – take away the digit that leaves, multiply by the base, add the digit that joins:</p>
+<div class="formula">5128 → (5128 − 5×1000) × 10 + 4 = 1284</div>
+<p>Programs do the same sums on the remainders – ((h − out × B<sup>m−1</sup>) × B + in) mod q, for base B and pattern length m – so the numbers stay small. Two different windows can have the same remainder: a <b>false alarm</b> (spurious hit), which the letter-by-letter check catches. Hashes of several patterns can be checked at every window at once.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="x-r1" data-auto="viz:end machine=rk preset=phone">Open <button class="do" type="button" data-viz="rk:phone">show it</button> – looking for the number 1284 in a stream of digits.</li>
+    <li data-task="x-r2" data-auto="viz:end machine=rk preset=dna">Open <button class="do" type="button" data-viz="rk:dna">show it</button> – DNA, with a small q (7). How many false alarms are there?</li>
+  </ol>
+</div>
+<div class="q" data-q="x-q7" data-accept="^36$">
+  <div class="q-text">What is the hash of the window 2849 with q = 97?</div>
+  <div class="q-model"><p>2849 mod 97 = 36 (97 × 29 = 2813; 2849 − 2813 = 36).</p></div>
+</div>
+<div class="q" data-q="x-q8">
+  <div class="q-text">Why does a larger q (say 101 instead of 7) give fewer false alarms?</div>
+  <div class="q-model"><p>The hash can take q different values. With q = 7, a random window has the pattern’s hash about one time in seven; with q = 101, about one time in a hundred. Real programs use very large q (or 64-bit hashes), so false alarms are rare.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="x-r3" data-auto="viz:practice machine=rk">Open <button class="do" type="button" data-viz="rk:phone" data-viz-mode="practice">your turn</button> and roll the hash on yourself for a few windows.</li>
+  </ol>
+</div>
+
+<h2 id="x-regex">Patterns with choices</h2>
+<p>Motifs are rarely one exact word. A PROSITE pattern such as <code>C-x-H-x-[LIVMFY]-C-x(2)-C-[LIVMYA]</code> means: C, any residue, H, any, one of L I V M F Y, C, any two, C, one of L I V M Y A. In Python the same is the regular expression <code>C.H.[LIVMFY]C.{2}C[LIVMYA]</code>, and <code>re.finditer</code> finds every match. Tools such as grep turn the pattern into a small machine (an automaton) that reads the text one letter at a time – the idea of the KMP table, for a pattern with choices. (Python’s <code>re</code> instead tries the pattern at each position, going back when a choice fails.)</p>
+
+<h2 id="x-tools">In real tools</h2>
+<table class="table tools"><tr><th><code>grep</code></th><td>GNU grep finds fixed strings with a variant of Boyer–Moore, and looks for many patterns at once with a trie of the patterns (chapter 4).</td></tr><tr><th>Python <code>re</code>, ScanProsite</th><td>Regular expressions and PROSITE patterns: motifs with choices and stretches of any letter.</td></tr><tr><th>k-mer tools</th><td>Rolling hashes (for example ntHash) give the hash of every k-mer of a read in one step each – the start of minimizers and of k-mer counting (chapters 9 and 12).</td></tr><tr><th>Read mappers</th><td>Do not scan the genome for each read: with billions of letters even n + m steps per read is too slow. They index the genome once (chapters 4 and 5), and then each read is found in time that depends on the read, not on the genome.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>Naive search: every shift, compare from the left – up to m × n comparisons.</li><li>KMP: a failure table π (longest borders) lets the pattern jump i − π[i] after i matched letters; no text letter is compared again after it has matched – O(n + m).</li><li>Boyer–Moore: compare from the right; jump by the larger of the bad-character and good-suffix rules. Long patterns, long jumps.</li><li>Rabin–Karp: compare hashes; a rolling hash updates in one step; equal hashes are checked letter by letter (false alarms).</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="index" data-num="4" data-title="Tries and suffix trees" data-bench="viz" hidden>
+  <h1>Indexing a text: tries, suffix trees and suffix arrays</h1>
+  <div class="meta-row"><span class="pill time">≈ 35 min</span></div>
+  <p class="lede">A genome is searched millions of times and never changes. So instead of preparing each pattern, prepare the genome once – as a tree or a sorted list of its suffixes – and every search becomes a short walk.</p>
+
+<h2 id="i-why">Prepare the text, not the pattern</h2>
+<p>KMP and Boyer–Moore prepare the <b>pattern</b> and then read the whole text for each search. A genome is searched again and again – for millions of reads – while it stays the same. So the genome is prepared once, as an <b>index</b>, and every search then takes time that depends on the pattern, not on the genome. This chapter builds three indexes; the next one compresses the last of them into the index of BWA and Bowtie.</p>
+
+<h2 id="i-trie">A trie of patterns</h2>
+<p>A <b>trie</b> (from re<i>trie</i>val) stores a set of words as a tree whose <b>edges carry letters</b>. Each word is a path from the root, and words that start alike share the start of their path – AAA and AAG share AA. To find every word of the set in a text, start at each position of the text and follow its letters down from the root as far as the trie allows; each marked node passed is a word found there.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="i-t1" data-auto="viz:end machine=trie">Open <button class="do" type="button" data-viz="trie:codons">show it</button> – the eight codons of lysine and arginine (the two positively charged amino acids), then a scan along a sequence.</li>
+  </ol>
+</div>
+<div class="q" data-q="i-q1" data-accept="^14$" data-hint="Count them at the end of the animation.">
+  <div class="q-text">The eight codons have 24 letters. How many nodes does their trie have, with the root?</div>
+  <div class="q-model"><p>14: the root, A and C, then AA, AG and CG, then the eight leaves. Shared beginnings are stored once.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="i-t2" data-auto="viz:practice machine=trie">Open <button class="do" type="button" data-viz="trie:small" data-viz-mode="practice">your turn</button>: say how many nodes each word adds, then whether a word starts at each position.</li>
+  </ol>
+</div>
+<p>The scan follows the text from every position and so can read a letter several times. The <b>Aho–Corasick</b> algorithm adds to the trie links like KMP’s failure table, so that the text is read only once however many words are looked for.</p>
+
+<h2 id="i-stree">Suffix tries and suffix trees</h2>
+<p>Turn it round: build a trie of every <b>suffix of the text</b>. Every substring of the text is the start of some suffix, so every substring is a path from the root – and the <b>leaves</b> below the end of that path are the suffixes that start with it: one leaf per occurrence, labelled with where it starts.</p>
+<p>Two refinements make it work. A <b>$</b> at the end: without it, a suffix that is also the start of a longer suffix (TA in TACTA) ends inside another path and gets no leaf. And <b>compression</b>: a suffix trie has long chains of nodes with one child each; merging every chain into one edge with a longer label gives the <b>suffix tree</b>, with at most 2n nodes. Searching a pattern of m letters then takes m steps plus one per occurrence, however long the text.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="i-s1" data-auto="viz:end machine=stree preset=tacta">Open <button class="do" type="button" data-viz="stree:tacta">show it</button> – the suffix trie of TACTA$, compressed into a suffix tree, then a search for TA.</li>
+    <li data-task="i-s2" data-auto="viz:end machine=stree preset=nodollar">Open <button class="do" type="button" data-viz="stree:nodollar">show it</button> – the same text without the $.</li>
+    <li data-task="i-s3" data-auto="viz:end machine=stree preset=longer">Open <button class="do" type="button" data-viz="stree:longer">show it</button> – CGCTACTA$, searching C.</li>
+  </ol>
+</div>
+<div class="q" data-q="i-q2" data-accept="^3\D+4$">
+  <div class="q-text">Without the $, which two suffixes of TACTA have no leaf in the suffix tree? (Their start positions.)</div>
+  <div class="q-model"><p>3 (TA) and 4 (A): each is also the start of a longer suffix (TACTA and ACTA), so it ends in the middle of that suffix’s path.</p></div>
+</div>
+<div class="q" data-q="i-q3" data-accept="^0\D+2\D+5$">
+  <div class="q-text">Where does C occur in CGCTACTA$? (The leaf labels, smallest first.)</div>
+  <div class="q-model"><p>0, 2 and 5: the three leaves below the edge C.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="i-s4" data-auto="viz:practice machine=stree">Open <button class="do" type="button" data-viz="stree:cta" data-viz-mode="practice">your turn</button> and count the occurrences of CTA from the tree.</li>
+  </ol>
+</div>
+<p>Suffix trees can be built in time proportional to the length of the text (Ukkonen, 1995), and they answer many questions at once – the longest repeat, the longest common substring of two genomes. Their weakness is memory: each node needs pointers and the positions of its label, about 20 bytes for every letter of the text – some 60 GB for a human genome.</p>
+
+<h2 id="i-sa">Suffix arrays</h2>
+<p>A <b>suffix array</b> keeps only what a search needs: the start positions of the suffixes, in sorted order. All the suffixes that start with a pattern are next to each other in it, so <b>binary search</b> (chapter 1) finds them: about log<sub>2</sub> n steps, each comparing up to m letters. One number per letter – 4 bytes each, about 12 GB for a human genome – much less than a suffix tree, and the starting point of the BWT (chapter 5).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="i-a1" data-auto="viz:end machine=sa preset=cta">Open <button class="do" type="button" data-viz="sa:cta">show it</button> – the suffixes of CGCTACTA$ sorted, then a binary search for CTA. The bracket shows where the first match can still be.</li>
+    <li data-task="i-a2" data-auto="viz:end machine=sa preset=absent">Try <button class="do" type="button" data-viz="sa:absent">show it</button> – a pattern that is not there.</li>
+  </ol>
+</div>
+<div class="q" data-q="i-q4" data-accept="^\[?\s*8\D+7\D+4\D+0\D+5\D+2\D+1\D+6\D+3\s*\]?$" data-hint="Write the 9 suffixes with their starts, sort them ($ first), read the starts.">
+  <div class="q-text">On paper: the suffix array of CGCTACTA$ (the start positions of its 9 sorted suffixes).</div>
+  <div class="q-model"><p>8 7 4 0 5 2 1 6 3: $, A$, ACTA$, CGCTACTA$, CTA$, CTACTA$, GCTACTA$, TA$, TACTA$.</p></div>
+</div>
+<div class="q" data-q="i-q5" data-accept="^(29|30|31)$">
+  <div class="q-text">About how many steps does a binary search need in a suffix array of a billion suffixes?</div>
+  <div class="q-model"><p>About 30: each step halves the range, and 2<sup>30</sup> is about 1.07 billion.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="i-a3" data-auto="viz:practice machine=sa">Open <button class="do" type="button" data-viz="sa:ta" data-viz-mode="practice">your turn</button>: at each step of the binary search, say which half to keep.</li>
+  </ol>
+</div>
+
+<h2 id="i-tools">In real tools</h2>
+<table class="table tools"><tr><th>MUMmer</th><td>Aligns whole genomes by first finding long exact matches between them – with a suffix tree in its first versions; MUMmer 4 replaced the tree with a suffix array, which copes with much larger genomes.</td></tr><tr><th>BWA, Bowtie, Bowtie 2</th><td>Their index is the BWT of the genome, which is made by sorting the suffixes – a suffix array – and is searched with the FM-index (chapter 5).</td></tr><tr><th>Many patterns at once</th><td>A trie of the patterns (with Aho–Corasick links) finds all of them in one pass along the text.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>A trie stores words as paths whose edges carry letters; shared beginnings are stored once.</li><li>A suffix tree is the compressed trie of all suffixes of text + $: a pattern is a path from the root, its occurrences the leaves below – O(m + occurrences), but about 20 bytes per letter.</li><li>A suffix array is the sorted list of suffix starts: binary search finds a pattern in about log₂ n steps; 4 bytes per letter.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="bwt" data-num="5" data-title="BWT and FM-index" data-bench="viz" hidden>
+  <h1>BWA and Bowtie: the Burrows–Wheeler transform</h1>
+  <div class="meta-row"><span class="pill time">≈ 45 min</span></div>
+  <p class="lede">BWA and Bowtie find where millions of reads come from in a genome of billions of letters, using a few gigabytes of memory. They do not search the genome itself: they search its Burrows–Wheeler transform with an FM-index. Here you build the transform of a short sequence, turn it back, and use it to find a read – the steps those mappers take, on a genome you can see at a glance.</p>
+
+<h2 id="b-why">Why not search the genome itself?</h2>
+<p>A sequencing run gives some 100 million reads of 100–150 bases; a human genome has 3.1 billion. Comparing every read with every position letter by letter would take about 3 × 10<sup>19</sup> comparisons. Mappers therefore build an <b>index</b> of the genome once, and look each read up in it.</p>
+<p>A suffix array (chapter 4) is such an index, but it stores one number per position – for the human genome, with 4 bytes per number, more than 12 GB. The <b>Burrows–Wheeler transform</b> (BWT) with the <b>FM-index</b> does the same job in a fraction of the memory: Bowtie’s index of the human genome is about 2.2 GB, and the program needs about 1.3 GB of memory while it maps (Langmead et al., 2009). BWA, Bowtie, Bowtie 2 and HISAT2 are all built on it.</p>
+<div class="callout concept">
+  <div class="co-t">Four steps</div>
+  <ol class="plain">
+<li><b>Build</b> the BWT: rotate, sort, read the last column.</li>
+<li><b>Turn it back</b> into the text: LF mapping – the reason the BWT can be searched at all.</li>
+<li><b>Search</b> it for a read: backward search, one letter at a time.</li>
+<li><b>Locate</b> the matches in the text: the suffix array.</li></ol>
+</div>
+
+<h2 id="b-build">1. Build the BWT</h2>
+<ol class="plain">
+<li>Add a <b>$</b> to the end of the text. The $ occurs only once and sorts <b>before</b> A, C, G and T.</li>
+<li>Write every <b>rotation</b> of the text: move the first character to the end, again and again. A text of n characters (with its $) has n rotations.</li>
+<li><b>Sort</b> the rotations alphabetically, as in a dictionary, and read the <b>last column</b> from top to bottom. That column is the BWT.</li>
+</ol>
+<p>For <code class="seq">ATAATA</code>: the text with its $ is <span class="tiles mini"><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bS">$</span></span>, and its BWT is <span class="tiles mini"><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bS">$</span><span class="tile bA">A</span><span class="tile bA">A</span></span>.</p>
+
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="b-w1" data-auto="viz:end machine=bwt">Open <button class="do" type="button" data-viz="bwt:ataata">show it</button> – the BWT of ATAATA – and play it to the end. Watch the rows move as they are sorted: rows that are still tied share a colour, and the underlined letters are the ones compared so far.</li>
+    <li data-task="b-w2" data-auto="viz:end machine=bwt preset=gattaca">Choose <b>GATTACA</b> in the list of examples (top right of the animation) and play it.</li>
+  </ol>
+</div>
+
+<div class="q" data-q="b-q1" data-type="mcq">
+  <div class="q-text">Why is the $ added to the text?</div>
+  <div class="mcq"><label data-correct data-why="With the $, the sorted rows are the sorted suffixes of the text (each followed by the rest of the rotation) – this is what makes the BWT reversible and searchable."><input type="radio"> <span>To mark the end: as a unique character that sorts first, it makes every rotation different and puts the rotations in the order of the suffixes of the text</span></label><label data-why="The compression comes from the sorting, which brings equal letters together."><input type="radio"> <span>To make the text easier to compress</span></label><label data-why="They can – but two rotations of a repetitive text could then be identical, and the order of the suffixes would be lost."><input type="radio"> <span>Because A, C, G and T cannot be sorted without it</span></label></div>
+</div>
+<div class="q" data-q="b-q2" data-accept="^actga\$ta$" data-hint="Read the last column of the sorted rotations, top to bottom (8 characters, with the $).">
+  <div class="q-text">What is the BWT of GATTACA (with its $)?</div>
+  <div class="q-model"><p><code>ACTGA$TA</code>. The sorted rotations start with $GATTACA, A$GATTAC, ACA$GATT, ATTACA$G, CA$GATTA, GATTACA$, TACA$GAT, TTACA$GA – their last letters, top to bottom.</p></div>
+</div>
+<div class="q" data-q="b-q3">
+  <div class="q-text">The last step of the animation shows numbers on the left of the rows: where each rotation starts in the text. These numbers, read from top to bottom in the order of the sorted rows, are the <b>suffix array</b>. How is the BWT letter of a row related to its number?</div>
+  <div class="q-model"><p>The BWT letter of a row is the character just <b>before</b> the position where the row starts: BWT[i] = text[SA[i] − 1], and $ for the row that starts at 0. So the BWT can be read straight off a suffix array – which is how programs actually build it (sorting all rotations would take too much memory).</p></div>
+</div>
+
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="b-p1" data-auto="viz:practice machine=bwt">Open <button class="do" type="button" data-viz="bwt:ataata" data-viz-mode="practice">your turn</button>. Sort the rotations yourself: click the rotation that comes next, row by row. Then type the BWT.</li>
+    <li data-task="b-p2">On paper: build the BWT of <b>CATCAT</b>. Write its 7 rotations, sort them, read the last column, and type it in the question below.</li>
+    <li data-task="b-p3" data-auto="viz:input machine=bwt">Check your answer in the animation: <b>Change the input</b> → Text: <code>CATCAT</code> → <b>Show it</b>.</li>
+  </ol>
+</div>
+<div class="q" data-q="b-q4" data-accept="^tcct\$aa$" data-hint="7 rotations: CATCAT$, ATCAT$C, TCAT$CA … The $ sorts first.">
+  <div class="q-text">The BWT of CATCAT:</div>
+  <div class="q-model"><p><code>TCCT$AA</code>. Sorted rotations: $CATCAT, AT$CATC, ATCAT$C, CAT$CAT, CATCAT$, T$CATCA, TCAT$CA.</p></div>
+</div>
+
+<h2 id="b-runs">Runs of equal letters</h2>
+<p>Burrows and Wheeler invented the transform in 1994 to <b>compress</b> text – it is at the heart of the bzip2 program. Rows that begin with the same letters are sorted next to each other, and in a text with repeats they are often preceded by the same letter: the BWT has <b>runs</b> of equal letters, which are easy to compress. Genomes are full of repeats (about half of the human genome).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="b-r1" data-auto="viz:end machine=bwt preset=repeats">Open <button class="do" type="button" data-viz="bwt:repeats">show it</button> – the BWT of a repeat, ACACAC.</li>
+  </ol>
+</div>
+<div class="q" data-q="b-q5" data-accept="^ccc\$aaa$" data-hint="Play the example to the end, or build it on paper: 7 rotations.">
+  <div class="q-text">What is the BWT of ACACAC?</div>
+  <div class="q-model"><p><code>CCC$AAA</code>: every C comes just after an A, so the three rows that start with C all have A in L (AAA at the end); the rows that start with $ or A have C in L – except the whole text, ACACAC$, whose L is $. The letters come out in runs.</p></div>
+</div>
+
+<h2 id="b-lf">2. Turn it back: LF mapping</h2>
+<p>Nothing is lost in the BWT: the text can be read back from the last column alone. Two facts make it work.</p>
+<ol class="plain">
+<li>The <b>first column</b> (F) is the BWT sorted: just put its letters in order.</li>
+<li><b>LF mapping</b>: the k-th A in the last column (L) is the <i>same</i> A of the text as the k-th A in the first column (F) – and so for every letter. Both lists of A’s are in the same order, because both are sorted by the text that follows each A.</li>
+</ol>
+<p>So start at the row whose F is $ (row 0): its L is the last letter of the text. Find that letter in F (LF mapping): the L of that row is the letter before it. Repeat, and the text appears from right to left. Where is the k-th c of L in F? In row</p>
+<div class="formula">LF(c, k) = C[c] + k
+C[c]: how many letters of the text are smaller than c
+k: which c of L it is, counting from 0</div>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="b-l1" data-auto="viz:end machine=lf">Open <button class="do" type="button" data-viz="lf:ataata">show it</button> and play it. The small numbers count each letter in its column, from 0 (A<sub>0</sub>, A<sub>1</sub> …). They are not stored: the rank of a letter of L is counted when it is needed (Occ).</li>
+  </ol>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="b-l2" data-auto="viz:practice machine=lf">Open <button class="do" type="button" data-viz="lf:ataata" data-viz-mode="practice">your turn</button> and click the row of F that each letter maps to.</li>
+  </ol>
+</div>
+<div class="q" data-q="b-q6" data-accept="^agtagt\$?$" data-hint="F = $AAGGTT. Start at row 0: L[0] = T is the last letter of the text. Which row of F holds that T?">
+  <div class="q-text">On paper: the BWT of a text is <code>TT$AAGG</code>. What is the text?</div>
+  <div class="q-model"><p><code>AGTAGT</code>. F = $AAGGTT. Row 0: L = T, the last letter; it is the first T of L, so it is row C[T] + 0 = 5 of F. Row 5: L = G … and so on: T, G, A, T, G, A read backwards.</p></div>
+</div>
+<div class="q" data-q="b-q7">
+  <div class="q-text">Why must the A’s of L and the A’s of F be in the same order? Use ATAATA to explain.</div>
+  <div class="q-model"><p>The rows are sorted by their whole text. Take the rows that <i>end</i> with A (the A’s in L): each row is that A’s rotation shifted by one, so the text that follows each A is the beginning of its row. Sorting the rows sorts these A’s by what follows them. The rows that <i>start</i> with A (the A’s in F) are sorted by what follows the A as well – the same order. In ATAATA, the A’s of L (rows 0, 3, 5, 6) and of F (rows 1–4) are each in the order A$…, AATA$…, ATA$…, ATAATA$.</p></div>
+</div>
+
+<h2 id="b-search">3. Search it: backward search</h2>
+<p>Each row of the sorted matrix starts with a suffix of the text, so the rows that start with a pattern P are next to each other: a <b>range</b> of rows. Backward search finds that range one letter of P at a time, from its <b>last</b> letter to its first.</p>
+<ol class="plain">
+<li>The last letter c of P: the rows that start with c are the c-block of F.</li>
+<li>The next letter to the left, b: among the rows of the range, those with b in L are the places where b comes just before what has been matched. LF mapping takes them to the rows that start with b + what has been matched – again a range.</li>
+<li>Repeat until P is used up. If the range becomes empty, P is not in the text – often found out long before the end of P.</li>
+</ol>
+<div class="formula">top    = C[b] + Occ(b, top)
+bottom = C[b] + Occ(b, bottom)
+Occ(b, i) = how many b's are in L above row i</div>
+<p>The range runs from row <i>top</i> to row <i>bottom − 1</i>. C and Occ are the <b>FM-index</b> (Ferragina and Manzini, 2000). Each step takes the same short time however long the genome is: a read of 100 bases needs 100 steps, whether the genome has a thousand letters or three billion.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="b-s1" data-auto="viz:end machine=fm">Open <button class="do" type="button" data-viz="fm:ataata">show it</button> – ATA in ATAATA. Watch the blue bracket (the range) and the two Occ numbers used at each step.</li>
+    <li data-task="b-s2" data-auto="viz:end machine=fm preset=absent">Open <button class="do" type="button" data-viz="fm:absent">show it</button> – a pattern that is not there. At which letter does the search stop?</li>
+  </ol>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="b-s3" data-auto="viz:practice machine=fm">Open <button class="do" type="button" data-viz="fm:ataata" data-viz-mode="practice">your turn</button> and give the new range at each step.</li>
+  </ol>
+</div>
+<p>On paper: search <b>AT</b> in CATCAT. Its BWT is <span class="tiles mini"><span class="tile bT">T</span><span class="tile bC">C</span><span class="tile bC">C</span><span class="tile bT">T</span><span class="tile bS">$</span><span class="tile bA">A</span><span class="tile bA">A</span></span>, F is <span class="tiles mini"><span class="tile bS">$</span><span class="tile bA">A</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bC">C</span><span class="tile bT">T</span><span class="tile bT">T</span></span>, and C is: $ 0, A 1, C 3, T 5.</p>
+<div class="q" data-q="b-q8" data-accept="^(rows? )?5(\s*(-|–|—|to|and|,|\.\.|…)\s*|\s+)6$" data-hint="The T block of F starts at C[T] = 5; how many T&#x27;s are there?">
+  <div class="q-text">First step, the last letter T: which rows start with T? (first – last)</div>
+  <div class="q-model"><p>Rows 5–6: C[T] = 5, and there are two T’s.</p></div>
+</div>
+<div class="q" data-q="b-q9" data-accept="^(rows? )?1(\s*(-|–|—|to|and|,|\.\.|…)\s*|\s+)2$" data-hint="top = C[A] + Occ(A, 5) and bottom = C[A] + Occ(A, 7): count the A&#x27;s of L = TCCT$AA above row 5 and above row 7.">
+  <div class="q-text">Second step, A: which rows start with AT?</div>
+  <div class="q-model"><p>Rows 1–2: top = C[A] + Occ(A, 5) = 1 + 0 = 1; bottom = C[A] + Occ(A, 7) = 1 + 2 = 3, so rows 1 to 2. AT occurs twice.</p></div>
+</div>
+<div class="q" data-q="b-q10">
+  <div class="q-text">Why is it useful for a mapper that backward search can stop before the end of the pattern?</div>
+  <div class="q-model"><p>Most places in a genome do not match a read: the search for a read (or a seed) that is not there ends as soon as the range is empty, after a few letters – the mapper does not waste time on it. And the work for a read that is there grows with the length of the read, not of the genome.</p></div>
+</div>
+
+<h2 id="b-where">4. Where in the text? The suffix array</h2>
+<p>The range says <i>how many</i> times the pattern occurs; the suffix-array values of its rows say <i>where</i>. Keeping the whole suffix array would undo the savings, so an FM-index keeps only a <b>sample</b> – say every 32nd value. For a row without a value, LF steps walk one letter to the left in the text at a time, until a row with a value is reached; the position is that value plus the number of steps.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="b-x1" data-auto="viz:end machine=fm preset=sample">Open <button class="do" type="button" data-viz="fm:sample">show it</button> – here only the suffix-array values that are multiples of 3 are kept (the hatched cells are missing).</li>
+  </ol>
+</div>
+<div class="q" data-q="b-q11" data-type="mcq">
+  <div class="q-text">A row of the range has no suffix-array value. Two LF steps lead to a row whose value is 9. Where does the match start?</div>
+  <div class="mcq"><label data-why="Each LF step goes one letter to the &lt;i&gt;left&lt;/i&gt; in the text, so the starting row is to the right of 9."><input type="radio"> <span>At 7</span></label><label data-why="9 is where the row reached after two steps starts."><input type="radio"> <span>At 9</span></label><label data-correct data-why="Each LF step goes one letter to the left, so the row you started from begins 2 letters after 9: 9 + 2 = 11."><input type="radio"> <span>At 11</span></label></div>
+</div>
+
+<h2 id="b-tools">In BWA and Bowtie</h2>
+<table class="table tools"><tr><th><code>bwa index</code>, <code>bowtie2-build</code></th><td>Build the BWT of the genome, the counts (C and checkpoints of Occ) and a sampled suffix array. Done once per genome.</td></tr><tr><th>BWA-backtrack (<code>bwa aln</code>, reads up to about 100 bp)</th><td>Backward search of the whole read. Where the range becomes empty, it backtracks and tries another letter, so a few mismatches and gaps are allowed (Li and Durbin, 2009).</td></tr><tr><th>Bowtie</th><td>Backward search with <i>quality-aware</i> backtracking: substitutions are tried first at bases of low quality. Two indexes – of the genome and of the genome reversed (the “mirror” index) – limit the backtracking.</td></tr><tr><th>BWA-MEM (<code>bwa mem</code>, 70 bp to 1 Mbp)</th><td>Finds the longest exact matches between the read and the genome with the FM-index (SMEMs, at least 19 bases by default), groups nearby ones into chains, and extends them by Smith–Waterman alignment in a band (chapter 7).</td></tr><tr><th>Bowtie 2</th><td>Cuts the read into seeds (22 bases each in the default mode, spaced 1 + 1.15 × √(read length) apart), finds them exactly with the FM-index, then extends the most promising by dynamic programming (chapters 6 and 7).</td></tr></table>
+<p>Exact matching alone is not enough: reads have sequencing errors, and the sample differs from the reference. So the modern mappers use the FM-index to find <b>seeds</b>, and finish with an <b>alignment by dynamic programming</b> – the subject of the next two chapters.</p>
+<div class="q" data-q="b-q12" data-type="mcq">
+  <div class="q-text">Why does Bowtie 2 look up several short seeds instead of the whole read?</div>
+  <div class="mcq"><label data-correct data-why="Then dynamic programming checks the whole read at the places the seeds point to – allowing mismatches and gaps."><input type="radio"> <span>One mismatch anywhere in the read empties the range of an exact search; short seeds are likely to contain no error, so some of them are found</span></label><label data-why="Backward search works for a pattern of any length."><input type="radio"> <span>The FM-index cannot search patterns longer than 22 letters</span></label><label data-why="The index is the same whatever is searched."><input type="radio"> <span>Short seeds need less memory in the index</span></label></div>
+</div>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>The BWT is the last column of the sorted rotations of text + $; it is the character before each suffix of the suffix array.</li><li>LF mapping: the k-th c of L is the k-th c of F. It turns the BWT back into the text and makes it searchable.</li><li>Backward search finds the range of rows that start with a pattern, one letter at a time from the right: top/bottom = C[c] + Occ(c, top/bottom).</li><li>A sampled suffix array plus LF steps gives the positions.</li><li>BWA and Bowtie search with the FM-index; BWA-MEM and Bowtie 2 use it for seeds and finish with dynamic programming.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="edit" data-num="6" data-title="Edit distance" data-bench="viz" hidden>
+  <h1>How far apart? Edit distance and dynamic programming</h1>
+  <div class="meta-row"><span class="pill time">≈ 40 min</span></div>
+  <p class="lede">A read never matches the genome perfectly: sequencing errors, SNPs and small insertions and deletions see to that. To decide where a read belongs, a program must measure how different two sequences are, and line them up so that the differences show. Dynamic programming does both – it is the last step of every read mapper.</p>
+
+<h2 id="e-ham">Hamming distance</h2>
+<p>For two sequences of the same length, the <b>Hamming distance</b> is the number of positions where they differ – the number of substitutions:</p>
+<figure class="alnfig"><div class="aln mini"><div class="tiles"><span class="tile bA">A</span><span class="tile bG">G</span><span class="tile bG">G</span><span class="tile bC">C</span><span class="tile bT">T</span><span class="tile bC">C</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bG">G</span><span class="tile bG">G</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span></div><div class="aln-mid"><span>|</span><span>|</span><span>|</span><span>|</span><span>|</span><span>·</span><span>|</span><span>|</span><span>|</span><span>|</span><span>|</span><span>·</span><span>|</span><span>|</span><span>|</span></div><div class="tiles"><span class="tile bA">A</span><span class="tile bG">G</span><span class="tile bG">G</span><span class="tile bC">C</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bG">G</span><span class="tile bG">G</span><span class="tile bA">A</span><span class="tile bG">G</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span></div></div></figure>
+<div class="q" data-q="e-q1" data-accept="^2$">
+  <div class="q-text">What is the Hamming distance of AGGCTCTAGGATATA and AGGCTATAGGAGATA?</div>
+  <div class="q-model"><p>2: C/A at position 5 and T/G at position 11.</p></div>
+</div>
+<p>One insertion or deletion ruins it. These two sequences differ at <b>all 8</b> positions, yet deleting the first A and adding an A at the end turns one into the other:</p>
+<figure class="alnfig"><div class="aln mini"><div class="tiles"><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span></div><div class="aln-mid"><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span><span>·</span></div><div class="tiles"><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bA">A</span></div></div><figcaption>Hamming distance 8.</figcaption></figure>
+<figure class="alnfig"><div class="aln mini"><div class="tiles"><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bGap">-</span></div><div class="aln-mid"><span> </span><span>|</span><span>|</span><span>|</span><span>|</span><span>|</span><span>|</span><span>|</span><span> </span></div><div class="tiles"><span class="tile bGap">-</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bA">A</span></div></div><figcaption>With gaps: 2 edits.</figcaption></figure>
+
+<h2 id="e-dot">Dot plots</h2>
+<p>A <b>dot plot</b> shows two sequences against each other: one down the side, one across the top, and a dot wherever they match. A stretch the two share becomes a <b>diagonal</b>; an insertion or deletion shifts the diagonal sideways; a repeat gives parallel diagonals. With single letters, a quarter of the cells of two DNA sequences match by chance, so the plot is usually filtered: a dot only where a window of w letters has at least t matches.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="e-d1" data-auto="viz:end machine=dotplot preset=filtered">Open <button class="do" type="button" data-viz="dotplot:small">show it</button>, then <button class="do" type="button" data-viz="dotplot:indel">an insertion</button> and <button class="do" type="button" data-viz="dotplot:filtered">the same, filtered</button>.</li>
+    <li data-task="e-d2" data-auto="viz:end machine=dotplot preset=repeat">Open <button class="do" type="button" data-viz="dotplot:repeat">show it</button> – a sequence against itself. Where do the extra diagonals come from?</li>
+  </ol>
+</div>
+<div class="q" data-q="e-qd">
+  <div class="q-text">In the insertion example, the main diagonal breaks and continues three columns further right. What does that say about the two sequences?</div>
+  <div class="q-model"><p>Sequence 2 has three letters that sequence 1 lacks (an insertion in sequence 2, or a deletion in sequence 1): after them, the two match again, three positions further along sequence 2.</p></div>
+</div>
+
+<h2 id="e-edit">Edit distance</h2>
+<p>The <b>edit distance</b> (or Levenshtein distance) of two sequences is the smallest number of <b>substitutions</b>, <b>insertions</b> and <b>deletions</b> that turn one into the other. An <b>alignment</b> shows the edits: a gap (–) in one sequence stands for a letter that only the other has. In a dot plot, an alignment is a path from the top-left to the bottom-right corner: diagonal steps for letters aligned with letters, sideways or downward steps for gaps.</p>
+<figure class="alnfig"><div class="aln mini"><div class="tiles"><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bC">C</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bGap">-</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bG">G</span><span class="tile bC">C</span><span class="tile bG">G</span></div><div class="aln-mid"><span>|</span><span>|</span><span> </span><span>|</span><span>|</span><span>|</span><span>|</span><span> </span><span>|</span><span>|</span><span>|</span><span>|</span><span>|</span></div><div class="tiles"><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bGap">-</span><span class="tile bA">A</span><span class="tile bT">T</span><span class="tile bA">A</span><span class="tile bC">C</span><span class="tile bG">G</span><span class="tile bG">G</span><span class="tile bT">T</span><span class="tile bG">G</span><span class="tile bC">C</span><span class="tile bG">G</span></div></div><figcaption>Edit distance 2: a deletion and an insertion.</figcaption></figure>
+<p>The page also writes the edits as a <b>transcript</b>, one letter per column: <b>M</b> match, <b>S</b> substitution, <b>D</b> deletion (a gap in sequence 2), <b>I</b> insertion (a gap in sequence 1). Here: <code>MMDMMMMIMMMMM</code>.</p>
+
+<h2 id="e-rec">A recursive idea – and its cost</h2>
+<p>Look at the <b>last column</b> of the best alignment of x and y. It can only be one of three things: x’s last letter against y’s last letter (a match or a substitution), x’s last letter against a gap, or a gap against y’s last letter. Whichever it is, the rest is the best alignment of what is left. That is a recursive definition:</p>
+<pre class="codeblock">def edit_distance(x, y):
+    if len(x) == 0: return len(y)          # only insertions left
+    if len(y) == 0: return len(x)          # only deletions left
+    diff = 0 if x[-1] == y[-1] else 1
+    return min(edit_distance(x[:-1], y[:-1]) + diff,   # last letters aligned
+               edit_distance(x[:-1], y) + 1,           # x&#x27;s last letter against a gap
+               edit_distance(x, y[:-1]) + 1)           # y&#x27;s last letter against a gap</pre>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="e-r1" data-auto="viz:end machine=recur preset=plain">Open <button class="do" type="button" data-viz="recur:small">show it</button>, then <button class="do" type="button" data-viz="recur:plain">ACG and CCG</button>. Each dot is a call, coloured by the pair of prefixes it solves; the table counts the calls of each pair.</li>
+    <li data-task="e-r2" data-auto="viz:end machine=recur preset=memo">Open <button class="do" type="button" data-viz="recur:memo">show it</button> – the same with a memo: an answer is stored the first time and looked up after that (dashed).</li>
+  </ol>
+</div>
+<div class="q" data-q="e-qr" data-accept="^94[^0-9]+16$">
+  <div class="q-text">With ACG and CCG, how many calls does the plain recursion make, and how many different pairs of prefixes are there? (Two numbers.)</div>
+  <div class="q-model"><p>94 calls for 16 pairs (4 × 4: each prefix of ACG, from empty to all three letters, against each prefix of CCG). For two sequences of 10 letters it is more than 12 million calls for 121 pairs.</p></div>
+</div>
+<p><b>Dynamic programming</b> solves each pair of prefixes only once: it keeps the answers in a matrix D, where D[i][j] is the edit distance of the first i letters of x and the first j letters of y, and fills it in an order where the three cells each needs are already there.</p>
+<div class="formula">D[i][j] = min( D[i-1][j-1] + cost,    ↖ match or substitution
+               D[i-1][j]   + 1,       ↑ gap in sequence 2
+               D[i][j-1]   + 1 )      ← gap in sequence 1
+cost = 0 if x[i-1] == y[j-1], else 1
+D[i][0] = i,  D[0][j] = j</div>
+
+<h2 id="e-fill">Fill the matrix</h2>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="e-w1" data-auto="viz:end machine=dp preset=tiny">Open <button class="do" type="button" data-viz="dp:tiny">show it</button> – ACG against CCG. For each cell, the card next to the matrix shows the three candidates; the winner is orange.</li>
+    <li data-task="e-w2" data-auto="viz:end machine=dp preset=edit">Open <button class="do" type="button" data-viz="dp:edit">show it</button> – two 12-letter sequences, a row at a time – and play it to the end.</li>
+  </ol>
+</div>
+<div class="q" data-q="e-q2" data-accept="^1$">
+  <div class="q-text">What is the edit distance of ACG and CCG?</div>
+  <div class="q-model"><p>1 – one substitution (A→C).</p></div>
+</div>
+<div class="q" data-q="e-q3">
+  <div class="q-text">In the 12-letter example the bottom-right cell is 2. Which two edits does the alignment show?</div>
+  <div class="q-model"><p>A deletion – the second C of CGCATACGTGCG has no partner (CG-ATACG…) – and an insertion: the extra G of CGATACGGTGCG (…ACGGTG… against …AC-GTG…). CGCATAC-GTGCG / CG-ATACGGTGCG.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="e-p1" data-auto="viz:practice machine=dp preset=tiny">Open <button class="do" type="button" data-viz="dp:tiny" data-viz-mode="practice">your turn</button> and fill the cells yourself, then trace back.</li>
+    <li data-task="e-p2">On paper: fill the matrix of <b>GAT</b> (down the side) against <b>GCAT</b> (across the top), and answer below. Check it with <b>Change the input</b>.</li>
+  </ol>
+</div>
+<div class="q" data-q="e-q4" data-accept="^1$">
+  <div class="q-text">The edit distance of GAT and GCAT:</div>
+  <div class="q-model"><p>1 – one insertion: G-AT / GCAT. The matrix:</p><pre class="minimat">   ε  G  C  A  T
+ε  0  1  2  3  4
+G  1  0  1  2  3
+A  2  1  1  1  2
+T  3  2  2  2  1</pre></div>
+</div>
+
+<h2 id="e-trace">Trace back</h2>
+<p>The bottom-right cell holds the distance; the <b>alignment</b> comes from tracing back how each value was reached, from the bottom-right corner to the top-left. A diagonal step (↖) aligns two letters; a step up (↑) aligns a letter of sequence 1 with a gap; a step left (←) aligns a letter of sequence 2 with a gap. When two moves give the same value there is more than one best alignment – the page, like most programs, takes the diagonal when it can. The 12-letter example has two equally good alignments: the inserted G can be either G of …CGGTG….</p>
+<div class="q" data-q="e-q5" data-type="mcq">
+  <div class="q-text">During the traceback you move straight <b>up</b> one cell. What does that column of the alignment show?</div>
+  <div class="mcq"><label data-correct data-why="Up means i goes down by one while j stays: sequence 1 uses a letter, sequence 2 does not – a deletion, D in the transcript."><input type="radio"> <span>A letter of sequence 1 against a gap</span></label><label data-why="That is a step to the left."><input type="radio"> <span>A letter of sequence 2 against a gap</span></label><label data-why="Those are diagonal steps."><input type="radio"> <span>A match or a substitution</span></label></div>
+</div>
+
+<h2 id="e-approx">Find a pattern in a longer sequence</h2>
+<p>To find where a short pattern fits a long text best, with edits allowed, change two things: make the <b>first row all 0</b> – the pattern may start anywhere in the text at no cost – and take the <b>smallest value of the last row</b>: the fewest edits, ending at that column. The traceback stops when it reaches the top row: that is where the match starts.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="e-a1" data-auto="viz:end machine=dp preset=approx">Open <button class="do" type="button" data-viz="dp:approx">show it</button> – ATGCAGTCG in TTGGGATACAGTACGGAACCT.</li>
+  </ol>
+</div>
+<div class="q" data-q="e-q6" data-accept="^2$">
+  <div class="q-text">How many edits does ATGCAGTCG need to fit the text best?</div>
+  <div class="q-model"><p>2: a substitution (G→A) and an insertion: ATGCAGT-CG / ATACAGTACG.</p></div>
+</div>
+<div class="q" data-q="e-q7" data-accept="^atacagtacg$" data-hint="Read the top sequence of the alignment at the end, without the gaps.">
+  <div class="q-text">Which stretch of the text does it match?</div>
+  <div class="q-model"><p><code>ATACAGTACG</code>.</p></div>
+</div>
+
+<h2 id="e-cost">Why mappers do not do this with the whole genome</h2>
+<p>The matrix has (m + 1)(n + 1) cells. A 100-base read against a 3.1-billion-base genome: about 3 × 10<sup>11</sup> cells – for one read. So mappers first find a few likely places with an index (chapters 5 and 9) and run dynamic programming only there – often only in a <b>band</b> around the diagonal, since a good alignment does not stray far from it (with BWA-MEM’s default band, gaps longer than 100 bases are not found).</p>
+<div class="q" data-q="e-q8" data-accept="^1[ ,.]?510[ ,.]?151$" data-hint="(m + 1) × (n + 1).">
+  <div class="q-text">How many cells does the matrix of a 150-base read against a 10,000-base region have?</div>
+  <div class="q-model"><p>151 × 10,001 = 1,510,151.</p></div>
+</div>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>Hamming distance counts substitutions; edit distance also counts insertions and deletions.</li><li>The recursive definition is right but repeats work; dynamic programming stores each prefix result once: (m + 1)(n + 1) cells.</li><li>Each cell takes the best of three: ↖ (letter with letter), ↑ and ← (letter with a gap). The traceback gives the alignment; ties give equally good alternatives.</li><li>First row 0 and the best of the last row: the pattern may sit anywhere in the text (approximate matching).</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="scores" data-num="7" data-title="Global and local alignment" data-bench="viz" hidden>
+  <h1>Scores: Needleman–Wunsch and Smith–Waterman</h1>
+  <div class="meta-row"><span class="pill time">≈ 35 min</span></div>
+  <p class="lede">Not every difference is equally likely. In DNA, transitions are more common than transversions; in proteins, an isoleucine is often replaced by a leucine, hardly ever by a tryptophan. With scores that say so, the same matrix gives the alignments that EMBOSS needle and water compute – and the last step of BLAST and of every read mapper.</p>
+
+<h2 id="sc-pen">Penalties for DNA</h2>
+<p>The edit distance counts every change as 1. In DNA, <b>transitions</b> (A↔G and C↔T: purine for purine, pyrimidine for pyrimidine) are about twice as common as <b>transversions</b> in the human genome, and insertions and deletions are rarer than substitutions. A penalty table can say so: transition 2, transversion 4, gap 8. The matrix is filled as before, taking the <b>smallest</b> total. The tables are in the <b>Score tables</b> tab <button class="do showme" type="button" data-bench="tables">show them</button>.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="sc-w1" data-auto="viz:end machine=dp preset=penalty">Open <button class="do" type="button" data-viz="dp:penalty">show it</button> – TACGTCAGC against TATGTCATGC.</li>
+  </ol>
+</div>
+<div class="q" data-q="sc-q1" data-accept="^10$">
+  <div class="q-text">What is the total penalty of the best alignment?</div>
+  <div class="q-model"><p>10: a transition (C→T, 2) and one gap (8): TACGTCA-GC / TATGTCATGC.</p></div>
+</div>
+
+<h2 id="sc-nw">Scores: Needleman–Wunsch</h2>
+<p>Instead of penalties to keep small, alignments are usually given <b>scores</b> to make large: positive for a match, negative for a difference. With scores, the same matrix (Needleman and Wunsch, 1970) takes the <b>largest</b> of the three candidates. A <b>global</b> alignment covers both sequences from end to end: the answer is in the bottom-right cell.</p>
+<div class="formula">S[i][j] = max( S[i-1][j-1] + s(x[i-1], y[j-1]),   ↖
+               S[i-1][j]   + gap,                ↑
+               S[i][j-1]   + gap )               ←
+here: match +1, transition −1, transversion −3, gap −7</div>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="sc-w2" data-auto="viz:end machine=dp preset=nw">Open <button class="do" type="button" data-viz="dp:nw">show it</button> – the same two sequences, with scores.</li>
+  </ol>
+</div>
+<div class="q" data-q="sc-q2" data-accept="^0$">
+  <div class="q-text">What is the score of the best global alignment?</div>
+  <div class="q-model"><p>0: eight matches (+8), one transition (−1) and one gap (−7). The alignment is the same as with penalties – these scores say the same thing about DNA as the penalty table.</p></div>
+</div>
+
+<h2 id="sc-sw">Local alignment: Smith–Waterman</h2>
+<p>Often only <b>part</b> of two sequences is related: a shared domain, a read that runs off the end of a contig. Smith and Waterman (1981) changed one thing: no cell may fall <b>below 0</b>. A 0 means “nothing ending here is better than no alignment at all” – an alignment may start afresh anywhere. The best local alignment ends at the <b>highest cell anywhere</b> in the matrix, and the traceback stops at the first 0.</p>
+<div class="formula">V[i][j] = max( 0, V[i-1][j-1] + s(x[i-1], y[j-1]), V[i-1][j] + gap, V[i][j-1] + gap )</div>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="sc-w3" data-auto="viz:end machine=dp preset=swsmall">Open <button class="do" type="button" data-viz="dp:swsmall">show it</button> – GTG against AGTC with match +1, mismatch −1, gap −1.</li>
+    <li data-task="sc-w4" data-auto="viz:end machine=dp preset=sw">Open <button class="do" type="button" data-viz="dp:sw">show it</button> – two longer sequences, match +2, mismatch −4, gap −6. Notice the sea of zeros and the island of high scores.</li>
+  </ol>
+</div>
+<div class="q" data-q="sc-q3" data-accept="^2$">
+  <div class="q-text">The best local score of GTG and AGTC:</div>
+  <div class="q-model"><p>2: GT against GT.</p></div>
+</div>
+<div class="q" data-q="sc-q4" data-accept="^tatgctggcg$">
+  <div class="q-text">In the longer example, which part of GGTATGCTGGCGCTA is aligned?</div>
+  <div class="q-model"><p><code>TATGCTGGCG</code>, against TATGC-GGCG of the other sequence: 9 matches (+18) and one gap (−6) = 12.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="sc-p1" data-auto="viz:practice machine=dp preset=swsmall">Open <button class="do" type="button" data-viz="dp:swsmall" data-viz-mode="practice">your turn</button>: fill the matrix (remember the 0) and trace back.</li>
+  </ol>
+</div>
+
+<h2 id="sc-prot">Proteins: BLOSUM62</h2>
+<p>For proteins, a table of 20 × 20 scores says how often each amino acid replaces each other in related proteins. <b>BLOSUM62</b> is the one BLAST uses for proteins by default (chapter 8 shows how such a table is made). Look it up in the <b>Score tables</b> tab <button class="do showme" type="button" data-bench="tables">show it</button>: scores are high on the diagonal for rare, important residues (W–W 11, C–C 9), positive for similar ones (I–L 2), and negative for unlike ones (W–A −3).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="sc-w5" data-auto="viz:end machine=dp preset=protein">Open <button class="do" type="button" data-viz="dp:protein">show it</button> – a local alignment of two short proteins with BLOSUM62 and a gap of −8.</li>
+  </ol>
+</div>
+<div class="q" data-q="sc-q5" data-accept="^20([^0-9]|$)">
+  <div class="q-text">What is the best local score, and which residues are aligned?</div>
+  <div class="q-model"><p>20: AW-HE against AWGHE (A–A 4, W–W 11, a gap −8, H–H 8, E–E 5).</p></div>
+</div>
+
+<h2 id="sc-gaps">Gaps: one long or several short?</h2>
+<p>An insertion or deletion of several letters is usually one event, so a gap of 3 should cost less than three gaps of 1. <b>Affine</b> gap costs charge for opening a gap and less for each letter it covers: BLAST’s default for proteins is 11 to open plus 1 per residue, so a gap of k residues costs 11 + k. Gotoh (1982) showed how to fill the matrix with affine gaps in the same (m + 1)(n + 1) steps, using three matrices instead of one.</p>
+<div class="q" data-q="sc-q6" data-accept="^14([^0-9]|$)">
+  <div class="q-text">With BLAST’s gap costs (11 + 1 per residue), what does one gap of 3 residues cost? (And three separate gaps of 1?)</div>
+  <div class="q-model"><p>11 + 3 = 14; three gaps of 1 cost 3 × 12 = 36 – so the alignment with one longer gap wins.</p></div>
+</div>
+
+<h2 id="sc-tools">In real tools</h2>
+<table class="table tools"><tr><th>EMBOSS <code>needle</code></th><td>Needleman–Wunsch, global. Gap open 10, extend 0.5; EBLOSUM62 for proteins, EDNAFULL for DNA. Gaps at the ends are free by default.</td></tr><tr><th>EMBOSS <code>water</code></th><td>Smith–Waterman, local; the same defaults.</td></tr><tr><th>BLAST</th><td>Extends its hits by local alignment with gaps: BLOSUM62 and gap 11 + 1 per residue for proteins (chapter 8).</td></tr><tr><th>BWA-MEM</th><td>Extends its seeds by Smith–Waterman in a band: match 1, mismatch −4, gap 6 to open + 1 per base.</td></tr><tr><th>Bowtie 2</th><td>End-to-end by default: match 0, mismatch up to −6 (less at low-quality bases), gap 5 + 3 per base. With <code>--local</code>, matches score +2 and the ends may be clipped.</td></tr><tr><th>minimap2</th><td>Match 2, mismatch −4, gap 4 + 2 per base – or 24 + 1 per base for long gaps, whichever is cheaper.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>Penalties (smallest wins) and scores (largest wins) use the same matrix; only the rule of each cell changes.</li><li>Needleman–Wunsch is global: from end to end, answer in the bottom-right cell.</li><li>Smith–Waterman is local: no cell below 0, the answer is the highest cell, the traceback stops at 0.</li><li>BLOSUM62 scores amino-acid pairs; affine gaps (open + extend) prefer one long gap to several short ones.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="blast" data-num="8" data-title="BLAST and FASTA" data-bench="viz" hidden>
+  <h1>Searching databases: BLAST</h1>
+  <div class="meta-row"><span class="pill time">≈ 40 min</span></div>
+  <p class="lede">Smith–Waterman against a whole database would take far too long – and almost every sequence in it is unrelated to the query anyway. BLAST finds the few worth aligning by looking first for short words the query and the database share, then extends only those hits, and finally asks how likely such a match is by chance.</p>
+
+<h2 id="bl-why">Too many cells</h2>
+<p>Smith–Waterman finds the best local alignment, but fills m × n cells. A 300-residue protein against a database of a hundred billion residues is some 3 × 10<sup>13</sup> cells for one search. Yet almost every sequence in the database is unrelated to the query, and related ones nearly always share at least a few short words – exactly, or nearly (the <b>pigeonhole</b> principle: scatter a few differences along an alignment and some stretches between them must be untouched). So <b>BLAST</b> (Altschul et al., 1990) looks for shared words first, and aligns only where it finds them:</p>
+<ol class="plain">
+<li>Make a table of the query’s words (3 letters for proteins) and their <b>neighbours</b>: words that score at least T against them.</li>
+<li>Read the database once, looking every word up in the table: each match is a <b>hit</b>.</li>
+<li>Keep hits with a second hit on the same diagonal nearby (the <b>two-hit</b> rule).</li>
+<li><b>Extend</b> those hits in both directions without gaps, until the score drops X below the best: a <b>high-scoring segment pair</b> (HSP).</li>
+<li>Judge each HSP by its <b>E-value</b>; redo the good ones as gapped alignments.</li>
+</ol>
+
+<h2 id="bl-words">Words and their neighbourhoods</h2>
+<p>Exact words would miss most related proteins, which differ at many positions. BLAST also looks for words that are merely <i>similar</i>: every word whose BLOSUM62 score against a query word is at least the threshold <b>T</b>.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="bl-w1" data-auto="viz:end machine=words preset=pqg">Open <button class="do" type="button" data-viz="words:pqg">show it</button> – the neighbourhood of PQG at T = 13.</li>
+    <li data-task="bl-w2" data-auto="viz:end machine=words preset=ail">Compare <button class="do" type="button" data-viz="words:pqg11">T = 11</button> and <button class="do" type="button" data-viz="words:ail">AIL at T = 13</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="bl-q1" data-accept="^15$">
+  <div class="q-text">What does PEG score against PQG? (Use the Score tables tab.)</div>
+  <div class="q-model"><p>15: P–P 7, Q–E 2, G–G 6.</p></div>
+</div>
+<div class="q" data-q="bl-q2">
+  <div class="q-text">Why can BLAST, at T = 13, find nothing from the query word AIL – not even AIL itself?</div>
+  <div class="q-model"><p>AIL against itself scores only 12 (A–A 4, I–I 4, L–L 4), below 13: common residues have low self-scores in BLOSUM62, so a word of them has no neighbours – not even itself. Hits there must come from other words of the query.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="bl-w3" data-auto="viz:practice machine=words">Open <button class="do" type="button" data-viz="words:pqg" data-viz-mode="practice">your turn</button> and score candidate words yourself.</li>
+  </ol>
+</div>
+
+<h2 id="bl-scan">Hits, the two-hit rule and the extension</h2>
+<p>A hit is a pair of positions (query, database) where the words match: on a dot plot, a short diagonal stroke. Hits from one real alignment line up on the same diagonal; random hits are scattered and alone. Since 1997, BLAST extends a hit only if another hit lies on the same diagonal within 40 residues – most random hits are skipped, which makes it fast enough to use a lower T (more neighbours, more sensitive). The <b>extension</b> adds one pair at a time to each side and keeps the running score; it stops when the score has fallen more than <b>X</b> below the best seen, and keeps the best stretch.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="bl-s1" data-auto="viz:end machine=blast preset=main">Open <button class="do" type="button" data-viz="blast:main">show it</button> – a query against a related protein: the table, the scan, the two hits, the extension and the E-value. Orange cells are hits; grey hits are alone.</li>
+    <li data-task="bl-s2" data-auto="viz:end machine=blast preset=unrelated">Open <button class="do" type="button" data-viz="blast:unrelated">show it</button> – the same query against an unrelated protein.</li>
+  </ol>
+</div>
+<div class="q" data-q="bl-q3">
+  <div class="q-text">In the first example, why is the hit of PQG at database position 26 – an exact match – not extended?</div>
+  <div class="q-model"><p>It is alone on its diagonal: there is no second hit on the same diagonal within 40 residues, so the two-hit rule skips it. (The real alignment is on another diagonal.)</p></div>
+</div>
+<div class="q" data-q="bl-q4" data-type="mcq">
+  <div class="q-text">What does the X-drop rule do?</div>
+  <div class="mcq"><label data-correct data-why="A few bad pairs may be followed by good ones, so the extension goes on through small dips – but a long run of negative scores means the similarity has ended."><input type="radio"> <span>It stops the extension when the running score falls more than X below the best score seen so far</span></label><label data-why="That would stop at the first mismatch; X lets the extension cross short dips."><input type="radio"> <span>It stops the extension at the first pair with a negative score</span></label><label data-why="The ends are where the best score was reached, not a fixed number of letters."><input type="radio"> <span>It removes X letters from each end of the alignment</span></label></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="bl-s3" data-auto="viz:practice machine=blast">Open <button class="do" type="button" data-viz="blast:main" data-viz-mode="practice">your turn</button>: decide which database words are hits, and add up the extension.</li>
+  </ol>
+</div>
+
+<h2 id="bl-e">Is it significant? The E-value</h2>
+<p>Any two long sequences have <i>some</i> local alignment with a positive score. Karlin and Altschul (1990) worked out how high the best score of unrelated sequences tends to be: scores of random local alignments follow an <b>extreme-value</b> distribution, and the number of alignments expected by chance with a score of at least S is</p>
+<div class="formula">E = K · m · n · e^(−λS)
+m: length of the query, n: length of the database
+bit score S' = (λS − ln K) / ln 2,   so   E = m · n · 2^(−S')</div>
+<p>λ and K depend on the scores and the amino-acid frequencies (for BLOSUM62 with gaps of 11 + 1, λ = 0.267 and K = 0.041). The <b>E-value</b> is an expected number, not a probability: E = 0.01 means a score this good turns up by chance once in a hundred searches of a database this size. The bit score does not depend on the database; the E-value does.</p>
+<div class="q" data-q="bl-q5" data-accept="^0?[.,]004$">
+  <div class="q-text">A hit has E = 0.002 in your search. The database doubles in size. What is its E-value now?</div>
+  <div class="q-model"><p>0.004: E is proportional to the size of the database (n) – twice as many places for a chance match.</p></div>
+</div>
+<div class="q" data-q="bl-q6" data-accept="^(about |~ ?)?(1024|1 024|1,024|2 ?\^ ?10|2¹⁰|1000)( times)?$">
+  <div class="q-text">Two hits differ by 10 bits. How many times smaller is the E-value of the better one?</div>
+  <div class="q-model"><p>2<sup>10</sup> = 1024 times: E = m n 2<sup>−S′</sup>, so each extra bit halves it.</p></div>
+</div>
+
+<h2 id="bl-fasta">FASTA</h2>
+<p>FASTA (Lipman and Pearson, 1985) also starts from short exact words – <b>k-tuples</b>, 2 letters for proteins and 6 for DNA by default – found with a lookup table. It counts the hits on each diagonal of the dot plot, scores the best diagonal runs with a substitution matrix, joins runs that can be connected with gaps, and finally runs Smith–Waterman in a <b>band</b> around the best diagonal. BLAST and FASTA are variations on one idea: exact matching to find the places, dynamic programming to align them.</p>
+
+<h2 id="bl-blosum">Where the scores come from: BLOSUM and PAM</h2>
+<p>A substitution score is a <b>log-odds</b>: how much more (or less) often two residues are aligned in related proteins than they would be by chance. Henikoff and Henikoff (1992) counted the pairs in some 2,000 <b>blocks</b> – ungapped stretches of aligned protein families. For BLOSUM62, sequences 62% identical or more were merged first, so that close relatives do not dominate; BLOSUM80 suits closer relatives, BLOSUM45 more distant ones. The older <b>PAM</b> matrices (Dayhoff et al., 1978) were built the other way round: from very similar sequences, extrapolated to longer evolutionary distances (PAM250 for distant relatives).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="bl-b1" data-auto="viz:end machine=blosum">Open <button class="do" type="button" data-viz="blosum:block">show it</button> – counting the pairs of a block of five sequences, column by column, then the log-odds scores.</li>
+  </ol>
+</div>
+<div class="q" data-q="bl-q7" data-accept="^6[^0-9]+10$">
+  <div class="q-text">The last column of the block reads K R K R R. How many K–R pairs does it contain, and how many pairs in all? (Two numbers.)</div>
+  <div class="q-model"><p>6 K–R pairs (2 K × 3 R) of 10 in all (5 × 4 / 2): also 1 K–K and 3 R–R.</p></div>
+</div>
+<div class="q" data-q="bl-q8" data-accept="^60$">
+  <div class="q-text">How many pairs does the whole block (5 sequences, 6 columns) have?</div>
+  <div class="q-model"><p>60: 6 columns × 10 pairs per column. In general w × s(s − 1)/2 for w columns and s sequences.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="bl-b2" data-auto="viz:practice machine=blosum">Open <button class="do" type="button" data-viz="blosum:block" data-viz-mode="practice">your turn</button> and count the pairs of two columns yourself.</li>
+  </ol>
+</div>
+
+<h2 id="bl-tools">In real tools</h2>
+<table class="table tools"><tr><th><code>blastp</code></th><td>Words of 3, threshold T = 11, BLOSUM62, gaps 11 + 1 per residue, two hits within 40 residues.</td></tr><tr><th><code>blastn</code></th><td>Its default task, megablast, uses exact words of 28 letters and scores +1/−2 – for very similar sequences. <code>-task blastn</code> uses words of 11 and +2/−3, for more distant ones.</td></tr><tr><th><code>blastx</code>, <code>tblastn</code>, <code>tblastx</code></th><td>Translate DNA in all six reading frames, because protein similarity lasts longer through evolution than DNA similarity.</td></tr><tr><th>PSI-BLAST</th><td>Builds a profile (a position-specific scoring matrix, chapter 11) from its first hits and searches again with it, round after round – finding more distant relatives.</td></tr><tr><th>FASTA (<code>fasta36</code>)</th><td>k-tuples (2 for proteins, 6 for DNA), diagonals, then banded Smith–Waterman.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>BLAST: neighbourhood words (score ≥ T) in a lookup table → one scan of the database → hits → two hits on a diagonal → ungapped X-drop extension → HSP → E-value → gapped alignment.</li><li>A lower T or a smaller word means more hits: more sensitive, slower.</li><li>E = K m n e^(−λS): the number of hits at least this good expected by chance; it grows with the size of the database and halves with each extra bit.</li><li>Substitution scores are log-odds of pair frequencies in related proteins (BLOSUM from blocks, PAM from close relatives).</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="mappers" data-num="9" data-title="Read mappers" data-bench="viz" hidden>
+  <h1>Mapping reads: BWA-MEM, Bowtie 2 and minimap2</h1>
+  <div class="meta-row"><span class="pill time">≈ 35 min</span></div>
+  <p class="lede">A mapper puts each of millions of reads where it came from in the genome, allowing for errors and real differences – in minutes. Whatever the tool, the plan is the same: find short exact seeds with an index, chain the seeds that agree, and run dynamic programming only there. They differ in how they find the seeds.</p>
+
+<h2 id="m-plan">Seed, chain, extend</h2>
+<p>A sequencing run gives hundreds of millions of reads; each must be placed on a genome of billions of letters, allowing for sequencing errors and real differences. Every modern mapper does it in three steps:</p>
+<ol class="plain">
+<li><b>Seed</b>: find short exact matches between the read and the genome, with an index made once (an FM-index, chapter 5, or a hash table of k-mers, chapter 2).</li>
+<li><b>Chain</b>: seeds from the read’s true place lie on one diagonal, in the same order in read and genome; group them, and pick the best group.</li>
+<li><b>Extend</b>: align the whole read there by dynamic programming (chapters 6 and 7), in a narrow band – the only place where the full alignment is computed.</li>
+</ol>
+<p>Why exact seeds work: a few errors cannot break up a read everywhere. A 100-base read with 3 differences has at most 4 stretches without one, and 97 letters to share between them – so at least one stretch of 25 or more letters matches exactly (the pigeonhole principle again).</p>
+<div class="q" data-q="m-q1" data-accept="^30$">
+  <div class="q-text">A 150-base read differs from the genome at 4 positions. How long a stretch without a difference must it contain, at least?</div>
+  <div class="q-model"><p>30: the 4 differences cut the read into at most 5 stretches holding 146 matching letters, so one of them has at least ⌈146/5⌉ = 30.</p></div>
+</div>
+
+<h2 id="m-watch">One read, all the way</h2>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="m-w1" data-auto="viz:end machine=mapper preset=del">Open <button class="do" type="button" data-viz="mapper:del">show it</button> – a read with one base missing. The plot has the read down the side and the reference across the top: each seed found in the reference is a short diagonal stroke (an <b>anchor</b>).</li>
+    <li data-task="m-w2" data-auto="viz:end machine=mapper preset=snp">Try <button class="do" type="button" data-viz="mapper:ins">an insertion</button> and <button class="do" type="button" data-viz="mapper:snp">a substitution, with minimizer seeds</button>. How does each difference show in the plot, and in the CIGAR?</li>
+    <li data-task="m-w3" data-auto="viz:end machine=mapper preset=repeat">Open <button class="do" type="button" data-viz="mapper:repeat">show it</button> – a read from a sequence that occurs twice.</li>
+  </ol>
+</div>
+<div class="q" data-q="m-q2">
+  <div class="q-text">The CIGAR of the first read is 16M1D7M. Read it in words.</div>
+  <div class="q-model"><p>16 bases aligned (matching or not), then 1 base of the reference that the read lacks (a deletion), then 7 more aligned bases. The read is 23 bases long and covers 24 of the reference.</p></div>
+</div>
+<p>Careful with the names: SAM writes the edits from the reference’s side – <b>I</b> is a letter of the read that the reference lacks, <b>D</b> a letter of the reference missing from the read. The edit transcripts of chapter 6, with the read as sequence 1, called these the other way round (a letter of sequence 1 against a gap was D).</p>
+<div class="q" data-q="m-q3">
+  <div class="q-text">In the plot, how does a deletion in the read show? (Compare the strokes before and after it.)</div>
+  <div class="q-model"><p>The strokes after it lie on a diagonal one column further to the right: from there on, reference position − read position is one larger, because the reference has a letter the read lacks. An insertion shifts the diagonal the other way.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="m-w4" data-auto="viz:practice machine=mapper">Open <button class="do" type="button" data-viz="mapper:del" data-viz-mode="practice">your turn</button> and work out where the read starts from the best chain.</li>
+  </ol>
+</div>
+
+<h2 id="m-min">Fewer seeds: minimizers</h2>
+<p>Indexing every k-mer of a genome takes a lot of memory, and a read gives many seeds that say the same thing. A <b>minimizer</b> scheme keeps one k-mer from every window of w consecutive k-mers: the smallest by some order. Neighbouring windows mostly agree, so only about 2/(w + 1) of the k-mers are kept – yet a read and the genome choose the <b>same</b> minimizers wherever they share a long enough stretch. minimap2 indexes only minimizers; it orders k-mers by a scrambled number rather than the alphabet, so that runs like AAAA… do not win every window.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="m-z1" data-auto="viz:end machine=minimizer preset=polyA">Open <button class="do" type="button" data-viz="minimizer:abc">show it</button>, then <button class="do" type="button" data-viz="minimizer:hash">the scrambled order</button> and <button class="do" type="button" data-viz="minimizer:polyA">a run of A’s</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="m-q4" data-accept="^(about |~ ?|≈ ?)?(2 ?/ ?11|0?[.,]18[0-9]*|18([.,][0-9]+)? ?%|0?[.,]2|1 ?/ ?5|20 ?%)$">
+  <div class="q-text">About what fraction of the k-mers are kept as minimizers with w = 10 (minimap2’s default)?</div>
+  <div class="q-model"><p>About 2/11, a little under one in five: 2/(w + 1).</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="m-z2" data-auto="viz:practice machine=minimizer">Open <button class="do" type="button" data-viz="minimizer:abc" data-viz-mode="practice">your turn</button> and pick the minimizer of each window.</li>
+  </ol>
+</div>
+
+<h2 id="m-mapq">Mapping quality</h2>
+<p>A read from a repeat fits several places equally well, and the mapper cannot know which is right. It still reports one place, with a <b>mapping quality</b> (MAPQ): −10 log<sub>10</sub> of the probability that the place is wrong, worked out from how much better the best alignment is than the second best. MAPQ 30 means a 1-in-1,000 chance of being wrong; a read with two equally good places gets 0 (BWA) or 0–1 (Bowtie 2). Variant callers ignore reads of low MAPQ – which is why variants in repeats are hard to find with short reads.</p>
+<div class="q" data-q="m-q5" data-type="mcq">
+  <div class="q-text">A read has MAPQ 20. What does that mean?</div>
+  <div class="mcq"><label data-correct data-why="10^(−20/10) = 0.01."><input type="radio"> <span>The mapper thinks there is a 1 in 100 chance that the read is in the wrong place</span></label><label data-why="That would be its edit distance (the NM tag)."><input type="radio"> <span>The read has 20 mismatches</span></label><label data-why="Base qualities are in the FASTQ file; MAPQ is about the position."><input type="radio"> <span>The read’s bases have an average quality of 20</span></label></div>
+</div>
+
+<h2 id="m-tools">The mappers</h2>
+<table class="table tools"><tr><th>BWA-MEM</th><td>Seeds: the longest exact matches between the read and the genome (SMEMs, at least 19 bases), found with the FM-index of the genome. Chains nearby seeds, then extends them with banded Smith–Waterman (match 1, mismatch −4, gap 6 + 1 per base). For reads of 70 bases to 1 Mbp.</td></tr><tr><th>Bowtie 2</th><td>Seeds: substrings of 22 bases taken from the read at intervals (and from its reverse complement), looked up exactly in the FM-index. Extends the most promising with dynamic programming, end to end by default.</td></tr><tr><th>minimap2</th><td>Seeds: minimizers (k = 15, w = 10 by default; k = 21, w = 11 for short reads with <code>-x sr</code>), looked up in a hash table. Chains the anchors by dynamic programming, then aligns between and beyond them with affine gaps. Made for long reads, works for short ones.</td></tr><tr><th>HISAT2, STAR (RNA-seq)</th><td>Reads from mRNA can span an intron, so one part of the read maps here and the rest thousands of bases away: spliced alignment. HISAT2 uses FM-indexes; STAR finds the longest exactly matching prefix of the read with a suffix array, then the rest.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>Every mapper: seed (exact matches from an index), chain (anchors on one diagonal, in order), extend (banded dynamic programming of the whole read).</li><li>Indels shift the diagonal of the anchors; the CIGAR records them (M aligned, I extra in the read, D missing from it).</li><li>Minimizers keep about 2/(w + 1) of the k-mers, and the read and the genome pick the same ones.</li><li>MAPQ = −10 log₁₀ P(wrong place); a read with two equally good places gets 0 (BWA).</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="msa" data-num="10" data-title="Multiple alignment" data-bench="viz" hidden>
+  <h1>Multiple alignment: Clustal, MUSCLE and MAFFT</h1>
+  <div class="meta-row"><span class="pill time">≈ 40 min</span></div>
+  <p class="lede">BLAST finds the relatives of a sequence; a multiple alignment lines them all up, column by column, to show what the family has kept. Clustal, MUSCLE and MAFFT cannot afford the exact answer, so they build it from pairwise alignments: score every pair, build a guide tree, and align along it.</p>
+
+<h2 id="ms-why">Why not dynamic programming?</h2>
+<p>A multiple alignment puts related sequences in columns of corresponding letters, with gaps where some lack letters the others have. It shows what a family has kept – active sites, the core of the fold, binding motifs – and it is where profiles (chapter 11) and trees of evolution start.</p>
+<figure class="alnfig msafig"><div class="aln"><div class="msaf-row"><span class="msaf-n">a</span><span class="tiles"><span class="tile pH">A</span><span class="tile pH">V</span><span class="tile pO">S</span><span class="tile pO">S</span><span class="tile pO">Q</span><span class="tile pO">Q</span><span class="tile pH">A</span><span class="tile bGap">-</span><span class="tile pH">V</span><span class="tile pH">V</span></span></div><div class="msaf-row"><span class="msaf-n">b</span><span class="tiles"><span class="tile pH">A</span><span class="tile pH">V</span><span class="tile bGap">-</span><span class="tile pO">Q</span><span class="tile pO">Q</span><span class="tile pH">A</span><span class="tile pH">A</span><span class="tile pH">V</span><span class="tile pH">V</span><span class="tile pH">V</span></span></div><div class="msaf-row"><span class="msaf-n">c</span><span class="tiles"><span class="tile pH">A</span><span class="tile pH">V</span><span class="tile pO">Q</span><span class="tile pH">V</span><span class="tile pH">V</span><span class="tile pO">Q</span><span class="tile bGap">-</span><span class="tile bGap">-</span><span class="tile pH">V</span><span class="tile pH">V</span></span></div><div class="msaf-row"><span class="msaf-n">d</span><span class="tiles"><span class="tile pH">A</span><span class="tile pH">V</span><span class="tile pH">V</span><span class="tile pO">S</span><span class="tile pO">Q</span><span class="tile pO">Q</span><span class="tile pO">S</span><span class="tile bGap">-</span><span class="tile pH">A</span><span class="tile pH">V</span></span></div><div class="msaf-row"><span class="msaf-n"></span><span class="aln-mid"><span>*</span><span>*</span><span> </span><span> </span><span> </span><span> </span><span> </span><span> </span><span> </span><span>*</span></span></div></div><figcaption>Four short proteins aligned (the example of this chapter). * marks a column where all are identical.</figcaption></figure>
+<p>For two sequences, dynamic programming fills a matrix of (m&nbsp;+&nbsp;1)(n&nbsp;+&nbsp;1) cells. For three it fills a box, and each cell has 7 neighbours to consider instead of 3; for N sequences of length L, about L<sup>N</sup> cells with 2<sup>N</sup> − 1 neighbours each. The exact answer is out of reach beyond a handful of sequences, so every program builds a multiple alignment from <b>pairwise</b> alignments, done in a well-chosen order. The result is good, but not guaranteed to be the best.</p>
+<div class="q" data-q="ms-q1" data-type="mcq">
+  <div class="q-text">Dynamic programming on 10 sequences of 100 letters would fill a box of about how many cells?</div>
+  <div class="mcq"><label data-why="That counts the letters, not the cells: every combination of positions, one in each sequence, is a cell."><input type="radio"> <span>About 1,000 (10 × 100)</span></label><label data-correct data-why="One axis per sequence: 100 × 100 × … ten times. At a billion cells a second that would take some three thousand years."><input type="radio"> <span>About 10<sup>20</sup> (100<sup>10</sup>)</span></label><label data-why="That is two sequences; each further sequence multiplies the cells by about 100."><input type="radio"> <span>About 10<sup>4</sup> (100 × 100)</span></label></div>
+</div>
+
+<h2 id="ms-sp">A score for a multiple alignment: the sum of pairs</h2>
+<p>To say which of two multiple alignments is better, each column gets a score: the <b>sum of pairs</b> (SP). Every pair of letters in the column is looked up in a substitution table, a letter against a gap scores as a gap, and a gap against a gap scores 0 (neither sequence has a letter there, so the pair says nothing). The score of the alignment is the total over its columns.</p>
+<div class="q" data-q="ms-q2" data-accept="^15$">
+  <div class="q-text">With BLOSUM62, what is the sum-of-pairs score of a column A A S A? (Score tables tab.)</div>
+  <div class="q-model"><p>15: four letters make 6 pairs – three A–A pairs (4 each) and three A–S pairs (1 each).</p></div>
+</div>
+<div class="q" data-q="ms-q3" data-accept="^(-|−|–) ?8$">
+  <div class="q-text">And of a column A V A –, with −4 for a letter against a gap?</div>
+  <div class="q-model"><p>−8: A–V 0, A–A 4, V–A 0, and three letters against the gap, −4 each.</p></div>
+</div>
+<p>Near-identical sequences would dominate the score: ten copies of almost the same sequence make 45 pairs that all agree. ClustalW therefore gives each sequence a <b>weight</b>, and close relatives share theirs.</p>
+
+<h2 id="ms-star">Star alignment</h2>
+<p>The simplest plan: find the sequence most similar to all the others – the <b>centre</b> – align every other sequence to it, and merge the pairwise alignments through the centre. Merging follows one rule: <b>once a gap, always a gap</b>. When a pairwise alignment puts a gap into the centre, that gap becomes a column of the multiple alignment, and every sequence already merged gets a gap in it too.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="ms-w1" data-auto="viz:end machine=msa preset=star">Open <button class="do" type="button" data-viz="msa:star">show it</button> – four short proteins. First every pair is aligned and its identity (the % of identical columns) goes into the table; then the centre is chosen and the others are merged onto it.</li>
+  </ol>
+</div>
+<div class="q" data-q="ms-q4">
+  <div class="q-text">Which sequence is the centre, and why that one?</div>
+  <div class="q-model"><p>a: its identities with b, c and d (60, 56 and 67%) add up to the most, 183. (b: 171, c: 156, d: 166.)</p></div>
+</div>
+<div class="q" data-q="ms-q5">
+  <div class="q-text">In the merged alignment, d has a gap in column 8, although its own alignment with a has no gap at all. Where does that gap come from?</div>
+  <div class="q-model"><p>From b: aligning b to the centre put a gap into a (AVSSQQA-VV). Once a gap, always a gap – that column is now part of the multiple alignment, and every other row needs something in it, so d gets a gap.</p></div>
+</div>
+
+<h2 id="ms-tree">A guide tree: UPGMA</h2>
+<p>Usually no single sequence sits in the middle: the sequences fall into groups. Progressive alignment (next section) aligns the closest sequences first and then the groups, in the order of a <b>guide tree</b>, built from the <b>distances</b> between the sequences – for example 1 − identity. The simplest way to build it is <b>UPGMA</b> (the unweighted pair-group method with arithmetic mean):</p>
+<ol class="plain">
+<li>Find the two closest clusters (at first, each sequence is a cluster of its own) and join them, at a height of half their distance.</li>
+<li>In the table, replace them by the new cluster. Its distance to each other cluster is the <b>average</b> of the distances between their members.</li>
+<li>Repeat until one cluster is left: the root of the tree.</li>
+</ol>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="ms-t1" data-auto="viz:end machine=upgma preset=five">Open <button class="do" type="button" data-viz="upgma:five">show it</button> – five sequences, a to e, and the distances between them.</li>
+  </ol>
+</div>
+<div class="q" data-q="ms-q6" data-accept="^6[.,]5$">
+  <div class="q-text">After a and b are joined, what is the distance from (a,b) to c?</div>
+  <div class="q-model"><p>6.5: the average of d(a, c) = 7 and d(b, c) = 6.</p></div>
+</div>
+<div class="q" data-q="ms-q7" data-accept="^(7[.,]25|29 ?/ ?4)$">
+  <div class="q-text">When c and d are joined too, what is the distance between (a,b) and (c,d)?</div>
+  <div class="q-model"><p>7.25: the average of the four distances a–c 7, a–d 8, b–c 6 and b–d 8, which is 29/4.</p></div>
+</div>
+<div class="q" data-q="ms-q8" data-accept="(^|[^0-9])3[.,]8(3[0-9]*)?[^0-9]+2[.,]3(3[0-9]*)?([^0-9]|$)">
+  <div class="q-text">At what height is the root, and how long is the branch from (a,b) up to it? (Two numbers.)</div>
+  <div class="q-model"><p>The last join is (a,b) with ((c,d),e), at the average of the six distances 7, 8, 10, 6, 8 and 7: 46/6 = 7.67. The root is at half that, 3.83. (a,b) sits at 1.5, so its branch is 3.83 − 1.5 = 2.33.</p></div>
+</div>
+<div class="q" data-q="ms-q9" data-type="mcq">
+  <div class="q-text">In a UPGMA tree all the leaves end at the same level. What does that assume about evolution?</div>
+  <div class="mcq"><label data-correct data-why="Each join is placed at half the distance, as if both sides had changed equally. When rates differ, UPGMA can join the wrong pair; neighbour-joining does not assume a clock."><input type="radio"> <span>That every lineage changes at the same rate (a molecular clock)</span></label><label data-why="Sequences of any length can be compared: the distances come from their alignments."><input type="radio"> <span>That the sequences all have the same length</span></label><label data-why="The root is the last join, not one of the sequences."><input type="radio"> <span>That the oldest sequence is the root</span></label></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="ms-t2" data-auto="viz:practice machine=upgma">Open <button class="do" type="button" data-viz="upgma:five" data-viz-mode="practice">your turn</button>: click the smallest distance and work out the new distances for the first joins, then watch the rest.</li>
+  </ol>
+</div>
+<p><b>Neighbour-joining</b> (Saitou and Nei, 1987) is the other common method, and the one ClustalW uses. It starts from a star-shaped tree and repeatedly joins the pair of neighbours that makes the total length of the tree smallest, without assuming a clock. MUSCLE and Clustal Omega build their guide trees with UPGMA. A guide tree only has to give a good order of joins; trees meant to show evolution are built with more careful methods (maximum parsimony, maximum likelihood).</p>
+
+<h2 id="ms-prog">Progressive alignment</h2>
+<p>Progressive alignment (Feng and Doolittle, 1987; Higgins and Sharp, 1988) follows the guide tree from the leaves to the root. At each node it aligns the two things below it: two sequences, a sequence and a group, or two groups. A group is aligned as a whole, as a <b>profile</b> – a series of columns. A letter against a column scores the average of its scores against the letters of the column; a column against a column, the average over all the pairs between them. A gap put into a group goes into all of its rows, and the gaps already in a group stay: once a gap, always a gap.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="ms-p1" data-auto="viz:end machine=msa preset=pairs">Open <button class="do" type="button" data-viz="msa:pairs">show it</button> – two pairs of related DNA sequences. The guide tree joins a with b and c with d; then the two pairs are aligned as groups.</li>
+    <li data-task="ms-p2" data-auto="viz:end machine=msa preset=pairsStar">Now open <button class="do" type="button" data-viz="msa:pairsStar">the same sequences by the star method</button>, and compare the two alignments and their sum-of-pairs scores.</li>
+  </ol>
+</div>
+<div class="q" data-q="ms-q10">
+  <div class="q-text">The progressive alignment scores 28, the star alignment 25. Where do they differ, and why did the star method do worse?</div>
+  <div class="q-model"><p>In b’s row. The star method aligned b to the centre, c, on its own – and there were three equally good ways to do that (GATT-C-CAGT, GATT-CC-AGT and GATTCC--AGT). It took the first, with gaps in two places, not knowing that a, the sequence most like b, has its gap after GATTAC. Progressive alignment aligned a and b with each other first, then the pair as one profile against (c,d), so b’s gaps went into the same columns as a’s.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="ms-p3" data-auto="viz:practice machine=msa">Open <button class="do" type="button" data-viz="msa:progressive" data-viz-mode="practice">your turn</button> – the four proteins again. Choose the pair that is aligned first, then score a column of the result.</li>
+  </ol>
+</div>
+
+<h2 id="ms-better">Doing better</h2>
+<p>Progressive alignment is fast, but a mistake made early – a gap in the wrong place, a wrong join in the guide tree – is locked in. Programs improve on it in three ways:</p>
+<ul>
+<li><b>Iterative refinement</b>: cut the finished alignment in two along a branch of the tree, realign the two parts as profiles, and keep the result if the sum of pairs improves; repeat (MUSCLE; MAFFT’s FFT-NS-i).</li>
+<li><b>Consistency</b>: before aligning, collect the alignments of every pair (global and local); when two sequences or groups are aligned, prefer the columns the other pairs agree with (T-Coffee, MAFFT’s L-INS-i, ProbCons and MUSCLE 5).</li>
+<li><b>Hidden Markov models</b>: align groups as profile HMMs (chapter 11), which score each gap by where it falls (Clustal Omega).</li>
+</ul>
+<p>The result is written as FASTA with gaps (often <code>.afa</code>) or in Clustal format: blocks of columns with marks underneath – <b>*</b> all identical, <b>:</b> strongly similar, <b>.</b> weakly similar. Viewers such as Jalview colour the residues by kind, as the tiles here, and plot the conservation of each column.</p>
+
+<h2 id="ms-tools">In real tools</h2>
+<table class="table tools"><tr><th>ClustalW</th><td>Aligns every pair; distances from their identities; a neighbour-joining guide tree; progressive alignment with sequence weights, and gap penalties lowered where gaps already are (and raised next to them).</td></tr><tr><th>Clustal Omega (<code>clustalo</code>)</th><td>Distances from shared k-tuples, worked out against a small sample of the sequences rather than for every pair (mBed); a UPGMA guide tree; progressive alignment of profile hidden Markov models (HHalign). Aligns hundreds of thousands of sequences.</td></tr><tr><th>MUSCLE</th><td>Version 3: k-mer distances, a UPGMA tree and a draft progressive alignment; distances from the draft, a second tree and realignment; then iterative refinement. Version 5 makes an ensemble of alignments with varied parameters and guide trees, which shows how reliable each column is.</td></tr><tr><th>MAFFT</th><td>Finds similar segments quickly with the fast Fourier transform; a first guide tree from shared 6-mers and a quick alignment, then a second tree from that alignment and the final progressive alignment (FFT-NS-2). FFT-NS-i refines iteratively; L-INS-i, among the most accurate for up to about 200 sequences, adds consistency from local pairwise alignments.</td></tr><tr><th>T-Coffee</th><td>Builds a library of global and local pairwise alignments and aligns progressively, favouring columns the library agrees on (consistency).</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>Exact multiple alignment needs about L<sup>N</sup> cells, so programs build it from pairwise alignments.</li><li>The sum of pairs scores a column by all its pairs: substitution scores, a gap against a letter, 0 for gap against gap.</li><li>Star alignment merges every sequence onto a centre; progressive alignment follows a guide tree (UPGMA, neighbour-joining) and aligns groups as profiles.</li><li>Once a gap, always a gap: early mistakes stay – iterative refinement and consistency repair some of them.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="hmm" data-num="11" data-title="Profiles and HMMs" data-bench="viz" hidden>
+  <h1>Profiles and hidden Markov models: PSI-BLAST, HMMER and Pfam</h1>
+  <div class="meta-row"><span class="pill time">≈ 45 min</span></div>
+  <p class="lede">BLOSUM62 scores a pair of amino acids the same wherever it falls. A protein family knows better: some positions never change, others vary freely. Profiles give every position its own scores; hidden Markov models add the chances of insertions and deletions – and power HMMER, Pfam and gene finders.</p>
+
+<h2 id="hm-prof">One score table per position: profiles</h2>
+<p>BLOSUM62 scores an isoleucine against a leucine the same wherever they meet. A family of proteins – or of binding sites in DNA – knows better: at some positions every member has the same letter, at others almost anything goes. A <b>profile</b> (a position-specific scoring matrix, PSSM) is built from an alignment of the family and gives every position its own column of scores:</p>
+<ol class="plain">
+<li><b>Count</b> the letters in each column, and divide by the number of sequences: the <b>frequencies</b>.</li>
+<li>Add <b>pseudocounts</b>, so that no letter has a probability of exactly 0 (next section).</li>
+<li>Turn each probability into a <b>log-odds score</b>: log2 of how much more common the letter is at this position than in random sequence – the same kind of number as a BLOSUM score.</li>
+</ol>
+<div class="formula">p(a) = (count(a) + 1) / (N + 4)       add 1 to every count
+score(a) = log2( p(a) / 0.25 )        0.25: random DNA</div>
+<p>To search a sequence, slide the profile along it: each window scores the sum of its letters’ scores, each looked up in its own column.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="hm-w1" data-auto="viz:end machine=profile preset=tata">Open <button class="do" type="button" data-viz="profile:tata">show it</button> – eight TATA boxes, the binding sites of a protein that starts transcription, then a sequence scanned with their profile.</li>
+  </ol>
+</div>
+<div class="q" data-q="hm-q1" data-accept="^(0?[.,]875|0?[.,]88|7/8)$">
+  <div class="q-text">What is the frequency of T in column 1?</div>
+  <div class="q-model"><p>0.875: 7 of the 8 sites have T there (the other has C).</p></div>
+</div>
+<div class="q" data-q="hm-q2" data-accept="^- ?1[.,](58[0-9]*|59|6)$">
+  <div class="q-text">Column 2 has A in all 8 sites. With pseudocounts, what is the score of C there?</div>
+  <div class="q-model"><p>−1.58: p = (0 + 1) / (8 + 4) = 0.083, and log2(0.083 / 0.25) = log2(1/3) = −1.58. C is a third as likely there as in random DNA – but not impossible.</p></div>
+</div>
+<div class="q" data-q="hm-q3">
+  <div class="q-text">The window at position 14, TATATC, starts like a TATA box but scores 3.83, against 8.64 for TATAAA at position 4. Which columns cost it most?</div>
+  <div class="q-model"><p>The last two: T in column 5 scores −0.58 (A would score 1.42) and C in column 6 scores −1.58 (A: 1.22). The first four letters score the same in both windows.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="hm-w2" data-auto="viz:practice machine=profile">Open <button class="do" type="button" data-viz="profile:tata" data-viz-mode="practice">your turn</button>: count a column, work out a score, then add up a window.</li>
+  </ol>
+</div>
+
+<h2 id="hm-pc">Why pseudocounts?</h2>
+<p>Eight sequences are a small sample. A letter that none of them has at a position may still occur there in other members of the family. Without pseudocounts its probability is 0, and its score log2(0) = −∞: a single such letter rules a window out, however well the rest of it fits.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="hm-w3" data-auto="viz:end machine=profile preset=nopc">Open <button class="do" type="button" data-viz="profile:nopc">show it</button> – the same profile without pseudocounts, scanning another sequence.</li>
+    <li data-task="hm-w4" data-auto="viz:end machine=profile preset=pc">Then <button class="do" type="button" data-viz="profile:pc">the same sequence with pseudocounts</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="hm-q4">
+  <div class="q-text">Without pseudocounts, the window TATAAC (at position 3) scores −∞, and the best window is CATTAA. With them, TATAAC is the best. Why the difference?</div>
+  <div class="q-model"><p>None of the eight sites has C in column 6, so without pseudocounts C has probability 0 there and the whole window scores −∞ – although its other five letters fit perfectly. With pseudocounts C only costs −1.58, and TATAAC scores 5.83. CATTAA, with two rare letters but no unseen one, wins only when unseen letters are forbidden.</p></div>
+</div>
+
+<h2 id="hm-psi">PSI-BLAST: profiles for searching</h2>
+<p>PSI-BLAST (position-specific iterated BLAST) turns a BLAST search into a profile search. A first search uses BLOSUM62; the hits with a small enough E-value (0.002 by default) are aligned with the query, and a profile is built from them – pseudocounts included. The database is searched again with the profile, which catches relatives that BLOSUM62 missed; their sequences go into the next profile, and so on – for a set number of rounds, or until no new sequences turn up. It finds much more distant relatives than BLAST – but one wrong sequence let in can lead the profile astray in later rounds.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="hm-w5" data-auto="viz:end machine=profile preset=protein">Open <button class="do" type="button" data-viz="profile:protein">show it</button> – a block of five related proteins. The frequencies of column 1 are {K: 0.8, N: 0.2}: a profile is just such a table per position.</li>
+  </ol>
+</div>
+
+<h2 id="hm-hmm">Hidden Markov models</h2>
+<p>A profile treats each column on its own, with no place for insertions and deletions. A <b>hidden Markov model</b> (HMM) adds them. It is a set of <b>states</b>, each of which <b>emits</b> letters with its own probabilities, and <b>transitions</b> between the states, each with a probability. A path through the states produces a sequence. We see the sequence, but not the path: the states are <b>hidden</b>.</p>
+<p>A small example: DNA in a CpG island is rich in C and G. An HMM with two states, + (emits C and G more often) and − (emits A and T more often), can say which stretches of a sequence probably came from which. Three questions can be asked of an HMM:</p>
+<ul>
+<li><b>Decoding</b>: which path of states most probably produced the sequence? The <b>Viterbi</b> algorithm.</li>
+<li><b>Evaluation</b>: how probable is the sequence under the model, over all paths? The <b>forward</b> algorithm.</li>
+<li><b>Learning</b>: which probabilities make a set of sequences most probable, when their paths are unknown? The <b>Baum–Welch</b> algorithm (training).</li>
+</ul>
+<p>Viterbi is dynamic programming, like the alignment matrices of chapter 6: a matrix of states × letters, filled from left to right. Each cell keeps the best way to reach that state at that letter, and remembers where it came from; the answer is traced back from the last column. Probabilities are multiplied along a path, and a product of hundreds of small numbers would be too small for a computer to store, so the cells hold log2 probabilities, which are added.</p>
+<div class="formula">V[k][i] = log2 e_k(x_i) + max_j ( V[j][i−1] + log2 a(j→k) )
+max_j: the largest over the states j
+e_k(x): the chance that state k emits letter x
+a(j→k): the chance that state j is followed by state k</div>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="hm-w6" data-auto="viz:end machine=viterbi preset=classic">Open <button class="do" type="button" data-viz="viterbi:classic">show it</button> – the most probable path of states for GGCACTGAA.</li>
+    <li data-task="hm-w7" data-auto="viz:end machine=viterbi preset=island">Try <button class="do" type="button" data-viz="viterbi:island">a GC-rich stretch in AT-rich DNA</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="hm-q5" data-accept="^- ?2[.,](74?|73[5-9][0-9]*)$">
+  <div class="q-text">What is V+(1), the first cell of the + row? (log2 0.5 = −1, log2 0.3 = −1.74.)</div>
+  <div class="q-model"><p>−2.74: log2 start(+) + log2 e+(G) = −1 + (−1.74).</p></div>
+</div>
+<div class="q" data-q="hm-q6" data-accept="^(\+ ?){3}(- ?){5}-$">
+  <div class="q-text">Which path of states does Viterbi give for GGCACTGAA? (One + or − per letter.)</div>
+  <div class="q-model"><p>+++−−−−−−: GGC from the + state, ACTGAA from the − state. Its probability is 2<sup>−24.49</sup>.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="hm-w8" data-auto="viz:practice machine=viterbi">Open <button class="do" type="button" data-viz="viterbi:classic" data-viz-mode="practice">your turn</button>: fill the first cells, then trace the path back.</li>
+  </ol>
+</div>
+<div class="q" data-q="hm-q7" data-type="mcq">
+  <div class="q-text">Open <button class="do" type="button" data-viz="viterbi:forward">the forward algorithm</button> on the same sequence. How does it differ from Viterbi?</div>
+  <div class="mcq"><label data-correct data-why="Forward answers the evaluation question: how well does the sequence fit the model at all? HMMER scores sequences this way."><input type="radio"> <span>It adds up the probabilities of the paths into each cell instead of keeping the best, giving the probability of the sequence over all paths</span></label><label data-why="That is the backward algorithm, used with forward to train models and to give the probability of each state at each letter."><input type="radio"> <span>It goes through the sequence from right to left</span></label><label data-why="It finds no path at all: it sums over all of them."><input type="radio"> <span>It finds the same path as Viterbi, faster</span></label></div>
+</div>
+<p>Because forward adds probabilities, it cannot simply add logs as Viterbi does. Programs rescale each column of the matrix so that the numbers stay in range, or add the logs with care (the log-sum-exp trick).</p>
+
+<h2 id="hm-phmm">Profile HMMs</h2>
+<p>A <b>profile HMM</b> is a profile turned into an HMM, built from a multiple alignment. Each column with letters in at least half of the sequences becomes a <b>match</b> state, which emits the letters of its column with their frequencies. Under each match state is a <b>delete</b> state, silent, for a gap in that column; between neighbouring match states is an <b>insert</b> state, for extra letters. Each sequence of the alignment is a path through the states; counting how often the paths take each arrow gives the transition probabilities.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="hm-w9" data-auto="viz:end machine=phmm preset=family">Open <button class="do" type="button" data-viz="phmm:family">show it</button> – five aligned sequences become a model, and a new sequence, TCGW, is scored by its most probable path.</li>
+    <li data-task="hm-w10" data-auto="viz:end machine=phmm preset=nopath">Score more sequences: <button class="do" type="button" data-viz="phmm:insert">ACGGF</button>, <button class="do" type="button" data-viz="phmm:deletion">TCW</button> and <button class="do" type="button" data-viz="phmm:nopath">TGGF</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="hm-q8">
+  <div class="q-text">Why does column 4 of the alignment become an insert state, not a match state?</div>
+  <div class="q-model"><p>Only 1 of its 5 sequences (TCGGF) has a letter there – fewer than half. That G is treated as an extra letter, emitted by the insert state I3.</p></div>
+</div>
+<div class="q" data-q="hm-q9" data-accept="^0?[.,]144$">
+  <div class="q-text">What is the probability of TCGW along its path B → M1 → M2 → M3 → M4 → E?</div>
+  <div class="q-model"><p>0.144: the transitions B→M1 1, M1→M2 1, M2→M3 0.8, M3→M4 0.75, M4→E 1, times the emissions T at M1 0.6, C at M2 1, G at M3 1, W at M4 0.4. That is 0.6 × 0.8 × 0.75 × 0.4 = 0.144.</p></div>
+</div>
+<div class="q" data-q="hm-q10">
+  <div class="q-text">TGGF has no path through the model at all. Why – and what do real tools do about it?</div>
+  <div class="q-model"><p>After T (M1), the only way on is to M2, which only ever emitted C – so no path emits G next, and the probability is 0. Real tools add pseudocounts (HMMER uses mixture Dirichlet priors: amino-acid distributions typical of alignment columns), so that every letter and every arrow has some small probability.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="hm-w11" data-auto="viz:practice machine=phmm">Open <button class="do" type="button" data-viz="phmm:family" data-viz-mode="practice">your turn</button>: classify a column, work out an emission and a transition, find a delete state, and multiply along a path.</li>
+  </ol>
+</div>
+
+<h2 id="hm-tools">In real tools</h2>
+<table class="table tools"><tr><th>PSI-BLAST (<code>psiblast</code>)</th><td>Builds a position-specific scoring matrix from the hits of each round (E-value below 0.002 by default) and searches again with it.</td></tr><tr><th>HMMER (<code>hmmbuild</code>, <code>hmmsearch</code>, <code>hmmscan</code>, <code>jackhmmer</code>)</th><td>Builds profile HMMs from alignments (by default a match state for each column with letters in at least half of the sequences), with pseudocounts from mixture Dirichlet priors. Scores sequences in bits with the forward algorithm, after fast filters that discard most of the database. <code>jackhmmer</code> iterates, like PSI-BLAST.</td></tr><tr><th>Pfam</th><td>More than 20,000 protein families and domains, each a profile HMM built from a curated seed alignment and searched with HMMER. Its families are browsed through the InterPro website.</td></tr><tr><th>AUGUSTUS, GlimmerHMM, SNAP</th><td>Gene finders: HMMs whose states are exons, introns, splice sites and the DNA between genes; Viterbi decoding labels a genome.</td></tr><tr><th>Clustal Omega, HH-suite</th><td>Align profile HMMs with each other (HHalign) – for multiple alignment (chapter 10) and for finding very distant relatives.</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>A profile has a column of scores per position: counts → frequencies → pseudocounts → log2(p / background).</li><li>Pseudocounts keep unseen letters possible; without them one unseen letter scores −∞.</li><li>An HMM has hidden states that emit letters and transitions between them. Viterbi finds the most probable path (max), forward the probability over all paths (sum) – both dynamic programming.</li><li>A profile HMM has match, insert and delete states, built from a multiple alignment; HMMER and Pfam use them to find protein families.</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="kmers" data-num="12" data-title="k-mers and sketches" data-bench="viz" hidden>
+  <h1>Comparing without aligning: k-mers, Bloom filters and MinHash</h1>
+  <div class="meta-row"><span class="pill time">≈ 35 min</span></div>
+  <p class="lede">Aligning is slow when there are thousands of genomes, or millions of reads from unknown species. Cutting sequences into k-mers and comparing the sets is fast – and with Bloom filters and MinHash sketches, it fits in very little memory. Mash, sourmash and Kraken are built this way.</p>
+
+<h2 id="km-bag">k-mers: a bag of words</h2>
+<p>A sequence of length N has N − k + 1 overlapping k-mers. Put them in a set and their order is lost – a “bag of words” – but each k-mer still keeps the order of its own k letters. The longer k, the more different k-mers are possible (4<sup>k</sup> for DNA), and the more a k-mer says about where it came from: in a random sequence the length of a human genome, a given 16-mer is expected about once, and most 31-mers of a real genome occur only once.</p>
+<p>k-mers have already appeared several times: as the words of a hash-table index (chapter 2), the seeds of BLAST and of read mappers (chapters 8 and 9), and the minimizers of minimap2 (chapter 9). Assemblers join reads through the k-mers they share (de Bruijn graphs), and k-mer counts expose sequencing errors, which make rare k-mers. This chapter uses them to compare sequences <b>without aligning them</b>.</p>
+<div class="q" data-q="km-q1" data-accept="^80$">
+  <div class="q-text">How many 21-mers does a read of 100 bases have?</div>
+  <div class="q-model"><p>80: 100 − 21 + 1. (Out of 4<sup>21</sup> ≈ 4.4 × 10<sup>12</sup> possible 21-mers.)</p></div>
+</div>
+
+<h2 id="km-jac">Jaccard similarity</h2>
+<p>Two sequences are similar if they share many k-mers. The <b>Jaccard similarity</b> of two sets compares what they share with what they hold together:</p>
+<div class="formula">J(A, B) = |A ∩ B| / |A ∪ B|
+         = the k-mers in both / the k-mers in either</div>
+<p>J = 1 for identical sets and 0 for sets with nothing in common. It takes one pass through each sequence, however long – no matrix, no alignment – so whole genomes, or millions of reads, can be compared in seconds.</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="km-w1" data-auto="viz:end machine=kmers preset=snp">Open <button class="do" type="button" data-viz="kmers:snp">show it</button> – two sequences that differ in one letter, cut into 3-mers.</li>
+    <li data-task="km-w2" data-auto="viz:end machine=kmers preset=other">Compare <button class="do" type="button" data-viz="kmers:snp4">the same with k = 4</button>, <button class="do" type="button" data-viz="kmers:shuffled">the same letters in another order</button> and <button class="do" type="button" data-viz="kmers:other">two unrelated sequences</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="km-q2" data-accept="^(0?[.,]69(2[0-9]*)?|9 ?/ ?13)$">
+  <div class="q-text">What is J for the two sequences with one difference, with k = 3?</div>
+  <div class="q-model"><p>9 / 13 = 0.692: 9 k-mers shared, 1 only in A (GCA), 3 only in B (TGG, GGA, GAT).</p></div>
+</div>
+<div class="q" data-q="km-q3">
+  <div class="q-text">With k = 4, J falls to 7/15 = 0.467 for the same single difference. Why does a larger k give a lower J?</div>
+  <div class="q-model"><p>A changed letter alters every k-mer that covers it – up to k of them in each sequence. With k = 3, two of the three changed 3-mers of A (TGC and CAT) also occur elsewhere in A, so A loses only GCA, and B gains TGG, GGA and GAT: 9 shared out of 13. With k = 4 all four changed 4-mers are unique: 4 only in A and 4 only in B, so 7 shared out of 15. Larger k makes k-mers more specific, but also more easily broken by differences: tools choose k to balance the two (21 or 31 for genomes).</p></div>
+</div>
+<div class="q" data-q="km-q4">
+  <div class="q-text">The sequence with its first six letters moved to the end (CATGCCATACGTTG) scores J = 0.75 – higher than the sequence with one changed letter. What does that say about k-mer similarity?</div>
+  <div class="q-model"><p>The order of the k-mers is lost: rearranging long stretches keeps almost every k-mer, so J barely notices a rearrangement that an alignment would show at once. k-mer methods measure shared content, not shared order.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="km-w3" data-auto="viz:practice machine=kmers">Open <button class="do" type="button" data-viz="kmers:snp" data-viz-mode="practice">your turn</button> and work out J yourself.</li>
+  </ol>
+</div>
+
+<h2 id="km-bloom">Bloom filters</h2>
+<p>To ask “is this k-mer in the set?” for billions of k-mers, storing the k-mers themselves takes too much memory. A <b>Bloom filter</b> (Bloom, 1970) keeps only a row of m bits. Adding a k-mer sets h bits (fewer if two hash functions pick the same bit), chosen by h hash functions; looking one up checks the same bits. If any is 0, the k-mer is <b>definitely not</b> in the set. If all are 1, it is <b>possibly</b> in the set – or the bits were set by other k-mers, a <b>false positive</b>. A Bloom filter never misses a k-mer that is there.</p>
+<div class="formula">P(false positive) ≈ (1 − e^(−h·n/m))^h
+n: k-mers in the filter, m: bits, h: hash functions</div>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="km-w4" data-auto="viz:end machine=bloom preset=small">Open <button class="do" type="button" data-viz="bloom:small">show it</button> – the 10 distinct 3-mers of one sequence in 16 bits, then the 3-mers of another looked up.</li>
+    <li data-task="km-w5" data-auto="viz:end machine=bloom preset=three">Compare <button class="do" type="button" data-viz="bloom:more">32 bits</button> and <button class="do" type="button" data-viz="bloom:three">16 bits with three hash functions</button>.</li>
+  </ol>
+</div>
+<div class="q" data-q="km-q5">
+  <div class="q-text">With 16 bits, GAT is reported as “possibly in A”, but it is not. Why?</div>
+  <div class="q-model"><p>Its two bits, 10 and 6, had both been set by other k-mers (CAT sets 10 and 6 as well – a collision). The filter cannot tell which k-mer set a bit.</p></div>
+</div>
+<div class="q" data-q="km-q6" data-type="mcq">
+  <div class="q-text">The formula gives a false-positive rate of about 0.51 for 16 bits and 2 hash functions, 0.22 for 32 bits, and 0.61 for 16 bits with 3 hash functions. Why does a third hash function make it worse here?</div>
+  <div class="mcq"><label data-correct data-why="More hash functions help only while the filter is mostly empty: the best number is about (m/n) ln 2 – here about 1."><input type="radio"> <span>Each k-mer then sets three bits, so the 16 bits fill up – 14 of 16 are 1 – and almost any lookup finds its bits set</span></label><label data-why="Slower, a little – but speed is not what the false-positive rate measures."><input type="radio"> <span>Three hash functions are slower</span></label><label data-why="All three spread the k-mers about equally well; the trouble is how full the filter gets."><input type="radio"> <span>Some hash functions are better than others</span></label></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="km-w6" data-auto="viz:practice machine=bloom">Open <button class="do" type="button" data-viz="bloom:small" data-viz-mode="practice">your turn</button>: work out the bits of a k-mer, and look one up.</li>
+  </ol>
+</div>
+
+<h2 id="km-mh">MinHash sketches</h2>
+<p>A Bloom filter is small, but it still grows with the set. To compare thousands of genomes with each other, each is reduced to a <b>sketch</b> of fixed size. <b>MinHash</b> (Broder, 1997) keeps, for each of several hash functions, only the k-mer with the <b>smallest</b> hash value. A hash function gives each k-mer a number that looks random but is always the same for the same k-mer, so if two genomes share a k-mer that is the smallest for one of them, it may well be the smallest for the other too.</p>
+<p>Why it works: of all the k-mers in A ∪ B, each is equally likely to have the smallest hash value. The minimum of A and the minimum of B are the same exactly when that k-mer is in both – which happens with probability J. So the fraction of hash functions whose minima agree estimates J; its error shrinks with the square root of the number of hash functions (roughly 1/√H).</p>
+<div class="activity">
+  <div class="act-t">Watch it</div>
+  <ol class="steps">
+    <li data-task="km-w7" data-auto="viz:end machine=minhash preset=many">Open <button class="do" type="button" data-viz="minhash:many">show it</button> – the same two sequences, eight hash functions.</li>
+    <li data-task="km-w8" data-auto="viz:end machine=minhash preset=bottom">Open <button class="do" type="button" data-viz="minhash:bottom">show it</button> – one hash function, keeping its five smallest values, as Mash does.</li>
+  </ol>
+</div>
+<div class="q" data-q="km-q7" data-accept="^(0?[.,]625?|5 ?/ ?8)$">
+  <div class="q-text">What is the estimate of J from the eight hash functions?</div>
+  <div class="q-model"><p>5/8 = 0.625: 0.07 below the true value, 0.692. That is well within what eight hash functions can promise: the rough rule that the error is about 1/√H gives ±0.35 for H = 8.</p></div>
+</div>
+<div class="q" data-q="km-q8" data-accept="^(about |~ ?)?(10[ ,.]?000|10 ?\^ ?4|10⁴|1e4)$">
+  <div class="q-text">About how many hash functions would be needed for an error of about 0.01?</div>
+  <div class="q-model"><p>About 10,000, by the rough rule that the error is about 1/√H: 1/√10,000 = 0.01. Working out 10,000 hash values for every k-mer would be slow, which is why Mash uses one hash function and keeps its 1,000 smallest values: one hash per k-mer, with an error of about 1/√1000 ≈ 0.03.</p></div>
+</div>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="km-w9" data-auto="viz:practice machine=minhash">Open <button class="do" type="button" data-viz="minhash:many" data-viz-mode="practice">your turn</button>: find the minima for the first hash function, then estimate J.</li>
+  </ol>
+</div>
+
+<h2 id="km-tools">In real tools</h2>
+<table class="table tools"><tr><th>Mash</th><td>Bottom-s MinHash sketches: by default the 1,000 smallest hash values of the 21-mers of a genome or read set. Estimates J from the union of two sketches, and turns it into a distance D = −(1/k) ln(2J / (1 + J)), close to the fraction of letters that differ.</td></tr><tr><th>sourmash</th><td>FracMinHash: keeps every hash value below a threshold (scaled = 1000 keeps about 1 in 1,000; k = 31 by default), so sketches grow with the genome and can tell how much of a genome is contained in a metagenome.</td></tr><tr><th>Kraken 2</th><td>Assigns each read to a taxon (a species, or a higher group when the read fits several): each 35-mer of a read, represented by its 31-base minimizer, is looked up in a compact hash table built from reference genomes.</td></tr><tr><th>BIGSI, COBS</th><td>A Bloom filter for each of hundreds of thousands of bacterial and viral datasets, stored side by side, to find every dataset that contains a gene or a resistance mutation.</td></tr><tr><th>Jellyfish, KMC</th><td>Count every k-mer of a sequencing run (Jellyfish in a hash table shared by many threads); the counts show genome size, repeats and errors.</td></tr><tr><th>MUSCLE 3</th><td>Its first guide tree comes from k-mer distances, not alignments (chapter 10).</td></tr></table>
+<div class="callout key">
+  <div class="co-t">Key points</div>
+  <ul><li>A sequence has N − k + 1 k-mers; as a set their order is lost, but each keeps the order of its own letters.</li><li>Jaccard similarity J = shared / in either: one pass, no alignment. One different letter changes up to k k-mers.</li><li>A Bloom filter stores a set as bits: “definitely not” or “possibly” – false positives, never false negatives.</li><li>MinHash keeps the smallest hash values: the fraction that agree between two sketches estimates J (Mash, sourmash).</li></ul>
+</div>
+
+</section>
+
+<section class="chapter" id="summary" data-num="13" data-title="Summary" data-bench="viz" hidden>
+  <h1>Summary: the algorithms inside the tools</h1>
+  <div class="meta-row"><span class="pill time">≈ 20 min</span></div>
+  <p class="lede">Every tool in a sequencing pipeline is a few of these algorithms put together. Here they are, tool by tool, with what each step costs – and a checklist of what you can now do by hand.</p>
+
+<h2 id="su-map">The tools, part by part</h2>
+<p>Each tool is a few of the algorithms of this course put together. The buttons open the animation of each part.</p>
+<table class="table mapt su-map">
+<tr><th>Tool</th><th>Job</th><th>What is inside</th></tr>
+<tr><th>grep, motif finders</th><td>Find a pattern exactly</td><td><button class="do" type="button" data-viz="bm:read">Boyer–Moore</button> <button class="do" type="button" data-viz="kmp:atcgatg">Knuth–Morris–Pratt</button></td></tr><tr><th><b>BWA-MEM</b></th><td>Map short reads to a genome</td><td><button class="do" type="button" data-viz="fm:genome">FM-index seeds</button> <button class="do" type="button" data-viz="mapper:del">chaining</button> <button class="do" type="button" data-viz="dp:sw">banded Smith–Waterman</button></td></tr><tr><th><b>Bowtie 2</b></th><td>Map short reads to a genome</td><td><button class="do" type="button" data-viz="bwt:read">the BWT</button> <button class="do" type="button" data-viz="fm:ataata">backward search</button> <button class="do" type="button" data-viz="dp:nw">dynamic programming</button></td></tr><tr><th>HISAT2, STAR</th><td>Map RNA-seq reads, across introns</td><td><button class="do" type="button" data-viz="fm:once">FM-index (HISAT2)</button> <button class="do" type="button" data-viz="sa:cta">suffix array (STAR)</button></td></tr><tr><th><b>minimap2</b></th><td>Map long reads, align genomes</td><td><button class="do" type="button" data-viz="minimizer:hash">minimizers</button> <button class="do" type="button" data-viz="hash:chain">hash table</button> <button class="do" type="button" data-viz="mapper:snp">seed, chain, extend</button></td></tr><tr><th><b>BLAST</b></th><td>Search a database for similar sequences</td><td><button class="do" type="button" data-viz="words:pqg">neighbourhood words</button> <button class="do" type="button" data-viz="blast:main">hits, two hits, X-drop</button> <button class="do" type="button" data-viz="blosum:block">BLOSUM</button></td></tr><tr><th>EMBOSS needle, water</th><td>Align two sequences</td><td><button class="do" type="button" data-viz="dp:nw">Needleman–Wunsch</button> <button class="do" type="button" data-viz="dp:sw">Smith–Waterman</button></td></tr><tr><th><b>Clustal Omega</b>, MUSCLE, MAFFT</th><td>Align many sequences</td><td><button class="do" type="button" data-viz="upgma:five">guide tree</button> <button class="do" type="button" data-viz="msa:progressive">progressive alignment</button></td></tr><tr><th>PSI-BLAST</th><td>Find distant relatives</td><td><button class="do" type="button" data-viz="profile:protein">profiles</button></td></tr><tr><th><b>HMMER</b>, Pfam</th><td>Find protein families and domains</td><td><button class="do" type="button" data-viz="phmm:family">profile HMM</button> <button class="do" type="button" data-viz="viterbi:forward">forward algorithm</button></td></tr><tr><th>AUGUSTUS, GlimmerHMM</th><td>Find genes</td><td><button class="do" type="button" data-viz="viterbi:island">Viterbi decoding</button></td></tr><tr><th>Mash, sourmash</th><td>Compare genomes without aligning</td><td><button class="do" type="button" data-viz="kmers:snp">k-mer sets</button> <button class="do" type="button" data-viz="minhash:bottom">MinHash</button></td></tr><tr><th>Kraken 2</th><td>Sort reads by taxon (species, genus …)</td><td><button class="do" type="button" data-viz="minimizer:hash">minimizers</button> <button class="do" type="button" data-viz="hash:chain">hash table</button></td></tr><tr><th>BIGSI, COBS</th><td>Find the genomes that contain a sequence</td><td><button class="do" type="button" data-viz="bloom:small">Bloom filters</button></td></tr>
+</table>
+<div class="q" data-q="su-q1">
+  <div class="q-text">A colleague maps reads with BWA-MEM and asks what “FM-index” and “Smith–Waterman” in its paper mean. In two or three sentences, what would you tell them?</div>
+  <div class="q-model"><p>The FM-index is a compressed index of the genome built from its Burrows–Wheeler transform: it finds every place where a short piece of the read occurs exactly, in one step per letter, whatever the size of the genome. Those exact matches (seeds) show where the read probably belongs; Smith–Waterman then aligns the whole read there, allowing mismatches and gaps, by dynamic programming in a narrow band.</p></div>
+</div>
+
+<h2 id="su-cost">What each step costs</h2>
+<p>For a text (or genome, or database) of length n and a pattern (or read, or query) of length m. These numbers say why each tool is built the way it is: an index makes a search independent of the genome’s size; dynamic programming is kept to small pieces; sketches make whole genomes comparable in a moment.</p>
+<table class="table su-cost">
+<tr><th>Algorithm</th><th>Time</th><th>Memory</th><th>Chapter</th></tr>
+<tr><td>Naive search</td><td>up to n × m</td><td>–</td><td>3</td></tr><tr><td>Knuth–Morris–Pratt</td><td>n + m</td><td>a table of m</td><td>3</td></tr><tr><td>Boyer–Moore</td><td>often less than n (it skips)</td><td>tables of m and the alphabet</td><td>3</td></tr><tr><td>Suffix array: search</td><td>m × log n</td><td>a number per letter of the text</td><td>4</td></tr><tr><td>FM-index: count</td><td>m (one step per letter of the pattern)</td><td>a fraction of the text’s size</td><td>5</td></tr><tr><td>Edit distance, Needleman–Wunsch, Smith–Waterman</td><td>m × n</td><td>m × n (less for the score alone)</td><td>6, 7</td></tr><tr><td>BLAST</td><td>one pass through the database, plus extensions</td><td>a table of words</td><td>8</td></tr><tr><td>Exact multiple alignment of N sequences</td><td>about L<sup>N</sup> × 2<sup>N</sup></td><td>about L<sup>N</sup></td><td>10</td></tr><tr><td>Progressive alignment</td><td>N(N − 1)/2 pairwise alignments, then N − 1 merges</td><td>the alignments</td><td>10</td></tr><tr><td>Viterbi, forward</td><td>L × S² (S states)</td><td>L × S</td><td>11</td></tr><tr><td>k-mer sets, Jaccard</td><td>one pass through each sequence</td><td>the k-mers</td><td>12</td></tr><tr><td>MinHash</td><td>one pass to sketch; s to compare</td><td>s values per genome</td><td>12</td></tr>
+</table>
+
+<h2 id="su-hand">By hand: a checklist</h2>
+<p>Each of these can be done on paper with a short sequence. Do each in <b>Your turn</b>; the item ticks itself when you finish it. If one still feels hard, go back to its chapter and watch it again first.</p>
+<div class="activity">
+  <div class="act-t">Your turn</div>
+  <ol class="steps">
+    <li data-task="su-h1" data-auto="viz:practice machine=bwt">Write the Burrows–Wheeler transform of a short word: <button class="do" type="button" data-viz="bwt:gattaca" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h2" data-auto="viz:practice machine=lf">Turn a BWT back into its text (LF mapping): <button class="do" type="button" data-viz="lf:gattaca" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h3" data-auto="viz:practice machine=fm">Count a pattern with backward search: <button class="do" type="button" data-viz="fm:ataata" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h4" data-auto="viz:practice machine=sa">Find a pattern in a suffix array: <button class="do" type="button" data-viz="sa:cta" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h5" data-auto="viz:practice machine=kmp">Build the table of Knuth–Morris–Pratt: <button class="do" type="button" data-viz="kmp:table" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h6" data-auto="viz:practice machine=bm">Work out Boyer–Moore’s shifts: <button class="do" type="button" data-viz="bm:tatac" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h7" data-auto="viz:practice machine=dp">Fill an edit-distance matrix and trace it back: <button class="do" type="button" data-viz="dp:tiny" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h8" data-auto="viz:practice machine=dp">Do a Smith–Waterman alignment: <button class="do" type="button" data-viz="dp:swsmall" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h9" data-auto="viz:practice machine=words">Find BLAST’s neighbourhood words: <button class="do" type="button" data-viz="words:pqg" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h10" data-auto="viz:practice machine=minimizer">Pick the minimizers of a sequence: <button class="do" type="button" data-viz="minimizer:abc" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h11" data-auto="viz:practice machine=upgma">Build a UPGMA guide tree: <button class="do" type="button" data-viz="upgma:five" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h12" data-auto="viz:practice machine=viterbi">Decode a sequence with Viterbi: <button class="do" type="button" data-viz="viterbi:classic" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h13" data-auto="viz:practice machine=phmm">Build a profile HMM and score a sequence: <button class="do" type="button" data-viz="phmm:family" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h14" data-auto="viz:practice machine=kmers">Work out a Jaccard similarity: <button class="do" type="button" data-viz="kmers:snp" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h15" data-auto="viz:practice machine=bloom">Add k-mers to a Bloom filter and look one up: <button class="do" type="button" data-viz="bloom:small" data-viz-mode="practice">your turn</button></li>
+    <li data-task="su-h16" data-auto="viz:practice machine=minhash">Estimate J with MinHash: <button class="do" type="button" data-viz="minhash:many" data-viz-mode="practice">your turn</button></li>
+  </ol>
+</div>
+
+<h2 id="su-gloss">Glossary</h2>
+<dl class="gloss"><dt>Alignment, global and local</dt><dd>Letters of two sequences placed in columns, with gaps. Global covers both from end to end (Needleman–Wunsch); local finds the best-matching parts (Smith–Waterman). Chapters 6–7.</dd><dt>Anchor</dt><dd>An exact match between a read and the genome (a seed found), drawn as a short diagonal; chains of anchors show where a read belongs. Chapter 9.</dd><dt>Bloom filter</dt><dd>A row of bits that answers “is this in the set?” with “definitely not” or “possibly” – false positives, never false negatives. Chapter 12.</dd><dt>BLOSUM62</dt><dd>A table of log-odds scores for pairs of amino acids, counted from blocks of related proteins. Chapters 7–8.</dd><dt>Burrows–Wheeler transform (BWT)</dt><dd>The last column of the sorted rotations of a text: reversible, compressible and searchable. Chapter 5.</dd><dt>CIGAR</dt><dd>The summary of an alignment in a SAM file: 16M1D7M = 16 aligned, 1 deleted, 7 aligned. Chapter 9.</dd><dt>Dynamic programming</dt><dd>Solving a problem from the answers to its smaller parts, kept in a table so that none is worked out twice. Chapters 6, 7, 11.</dd><dt>E-value</dt><dd>The number of matches at least this good expected by chance in a search of this size. Chapter 8.</dd><dt>FM-index</dt><dd>The BWT with tables C and Occ, which find a pattern in one step per letter (backward search). Chapter 5.</dd><dt>Forward algorithm</dt><dd>Dynamic programming that adds up the probability of a sequence over every path of hidden states. Chapter 11.</dd><dt>Guide tree</dt><dd>A tree of the sequences built from their distances (UPGMA, neighbour-joining) that sets the order of progressive alignment. Chapter 10.</dd><dt>Hash table</dt><dd>Slots addressed by a number computed from the key: a lookup takes one step on average. Chapter 2.</dd><dt>Hidden Markov model</dt><dd>States that emit letters, with transition probabilities; the path of states is hidden. Chapter 11.</dd><dt>HSP</dt><dd>A high-scoring segment pair: a stretch of query and database sequence aligned without gaps by BLAST’s extension. Chapter 8.</dd><dt>Jaccard similarity</dt><dd>Shared k-mers over all k-mers of two sets. Chapter 12.</dd><dt>k-mer</dt><dd>A word of k letters; a sequence of length N has N − k + 1 of them. Chapters 2, 8, 9, 12.</dd><dt>MAPQ</dt><dd>Mapping quality: −10 log₁₀ of the probability that a read is in the wrong place. Chapter 9.</dd><dt>MinHash</dt><dd>A sketch of a set: for each of several hash functions, the smallest hash value of its elements; matching minima estimate the Jaccard similarity. Chapter 12.</dd><dt>Minimizer</dt><dd>The smallest k-mer (by some order) in each window of w k-mers; a read and the genome choose the same ones. Chapter 9.</dd><dt>Profile (PSSM)</dt><dd>A column of scores for each position of a family’s alignment. Chapter 11.</dd><dt>Profile HMM</dt><dd>A hidden Markov model built from a multiple alignment, with match, insert and delete states for each column. Chapter 11.</dd><dt>Pseudocount</dt><dd>A small count added to every letter so that none has probability 0. Chapter 11.</dd><dt>Seed</dt><dd>A short exact match used to find where to align (BLAST words, mapper seeds). Chapters 8–9.</dd><dt>Suffix array</dt><dd>The start positions of all suffixes of a text, in alphabetical order of the suffixes. Chapter 4.</dd><dt>Suffix tree</dt><dd>A compressed trie of all the suffixes of a text. Chapter 4.</dd><dt>Sum of pairs</dt><dd>The score of a multiple alignment: every pair of letters in every column. Chapter 10.</dd><dt>UPGMA</dt><dd>Builds a tree by joining the two closest clusters and averaging their distances to the others, again and again. Chapter 10.</dd><dt>Viterbi algorithm</dt><dd>Dynamic programming that finds the most probable path of hidden states. Chapter 11.</dd></dl>
+
+</section>
+<!--/CHAPTERS-->
+    </aside>
+
+    <div class="splitter" role="separator" aria-orientation="vertical" title="Drag to resize · double-click to reset"></div>
+
+    <section class="bench" aria-label="Animations">
+      <div class="wb-tabs" role="tablist">
+        <button class="wb-tab on" type="button" role="tab" data-wb="viz"><svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Animation<span class="dot"></span></button>
+        <button class="wb-tab" type="button" role="tab" data-wb="tables"><svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/></svg>Score tables<span class="dot"></span></button>
+        <button class="bench-close" type="button" aria-label="Back to the instructions">✕ Instructions</button>
+      </div>
+      <div class="wb-body">
+        <div class="wb-pane" data-wb="viz"><div id="vizRoot" class="viz-root"></div></div>
+        <div class="wb-pane" data-wb="tables" hidden><div id="tablesRoot" class="tables-root"></div></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<button class="bench-fab" type="button" aria-label="Open the animation"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>Animation</button>
+<noscript><p style="padding:20px">This page needs JavaScript.</p></noscript>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/core.js"></script>
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/algos.js"></script>
+<script src="assets/js/viz.js"></script>
+<script src="assets/js/m-basics.js"></script>
+<script src="assets/js/m-match.js"></script>
+<script src="assets/js/m-index.js"></script>
+<script src="assets/js/m-bwt.js"></script>
+<script src="assets/js/m-dp.js"></script>
+<script src="assets/js/m-blast.js"></script>
+<script src="assets/js/m-map.js"></script>
+<script src="assets/js/m-msa.js"></script>
+<script src="assets/js/m-hmm.js"></script>
+<script src="assets/js/m-kmer.js"></script>
+<script src="assets/js/page-align.js"></script>
+<script src="assets/js/tutorial.js"></script>
+</body>
+</html>
